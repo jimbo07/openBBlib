@@ -1,14 +1,21 @@
 import pymel.core as pm
 
+
 class ObjLocator:
 
-    def __init__(self, name, position=[], scale=[]):
-        self.name = name
-        self.position = position
-        self.scale = scale
-        pm.spaceLocator(n=name, p=(position[0], position[1]), position[2])
+    def __init__(self, nameObj, textObj, positionObj=[], scaleObj=[]):
+        self.nameObj = nameObj
+        self.textObj = textObj
+        self.positionObj = positionObj
+        self.scaleObj = scaleObj
+        pm.spaceLocator(n=textObj, p=(positionObj[0], positionObj[1], positionObj[2]))
 
-    def float[] getPosition():
-        self.pos = pm.pointPosition(name, w=True)
-        return pos
+    def getPosition():
+        self.pos = pm.pointPosition(textObj, w=True)
+        return self.pos
 
+    def getObjName(self):
+        return self.nameObj
+
+    def getObjText(self):
+        return self.textObj
