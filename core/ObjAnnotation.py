@@ -1,20 +1,28 @@
+import pymel.core as pm
+
 class ObjAnnotation:
 
-    def ___init_(self, nameObj, textObj, pointingObj, startObj, positionObj=[]):
+    def __init__(self, nameObj, textObj, pointObj, startObj, positionObj=[]):
         self.nameObj = nameObj
         self.textObj = textObj
-        self.pointingObj = pointingObj
+        self.pointObj = pointObj
         self.startObj = startObj
         self.positionObj = positionObj
         if (self.startObj == ''):
-            pm.annotate(pointingObj, tx=text, p=position)
+            pm.annotate(pointObj, tx=textObj, p=positionObj)
         else:
-            pos = pm.xform(startObj, q=True, t=True)
-            pm.annotate(pointingObj, tx=text, p=pos)
-            pm.parent(text, startObj)
+            pos = pm.xform(startObj, q=True, ws=True, t=True)
+            pm.annotate(pointObj, tx=textObj, p=pos)
+            pm.parent(textObj, startObj)
 
     def getObjName(self):
         return self.nameObj
 
     def getObjText(self):
         return self.textObj
+
+    def getStartingObj(self):
+        return self.startObj
+
+    def getPointingObj(self):
+        return self.pointObj
