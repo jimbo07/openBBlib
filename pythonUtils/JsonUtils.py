@@ -102,6 +102,15 @@ class JsonUtils:
             self.filePath = self.filePath + '\\'
 
         with open(self.filePath + self.fileName + '.json') as json_file:
-            readedData = json.load(json_file)
+            readData = json.load(json_file)
 
-        return readedData
+        return readData
+
+    def getJsonName(self):
+        return self.nameDataJson
+
+    def getFullFilePath(self):
+        return self.nameDataJson + self.fileName + '.json'
+
+    def getFileName(self):
+        return self.fileName

@@ -1,6 +1,5 @@
 import pymel.core as pm
 
-
 class ObjLocator:
 
     def __init__(self, nameObj, textObj, positionObj=[], scaleObj=[]):
@@ -8,7 +7,9 @@ class ObjLocator:
         self.textObj = textObj
         self.positionObj = positionObj
         self.scaleObj = scaleObj
-        pm.spaceLocator(n=textObj, p=(positionObj[0], positionObj[1], positionObj[2]))
+        pm.spaceLocator(n= self.textObj)
+        #pm.xform( self.textObj, cp=True)
+        pm.xform(self.textObj, r=True, t=(self.positionObj[0], self.positionObj[1], self.positionObj[2]))
 
     def getPosition():
         self.pos = pm.pointPosition(textObj, w=True)
@@ -19,3 +20,11 @@ class ObjLocator:
 
     def getObjText(self):
         return self.textObj
+
+    def addStringAttribute(self, shortName, longName, text):
+        pm.addAttr(self.textObj, sn=shortName, ln=longName, dt='string')
+        pm.setAttr(self.textObj+'.'+longName, text)
+
+    def addFloatAttribute(self, shortName, longName, minValue, maxValue, defaultValue):
+        pm.addAttr(self.textObj, sn=shortName, ln=longName, at='float', dt='double', min=minValue, max=maxValue, dv=defaultValue)
+        pm.setAttr(self.textObj+'.'+longName, l=False, k=True)
