@@ -2,14 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="19308676-5e06-4c16-a20b-7a63c99e4d6a" name="Default" comment="update">
-      <change afterPath="$PROJECT_DIR$/modulesCreator/ModuleCreator.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/pythonUtils/__init__.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/ObjAnnotation.py" beforeDir="false" afterPath="$PROJECT_DIR$/core/ObjAnnotation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/core/ObjLocator.py" beforeDir="false" afterPath="$PROJECT_DIR$/core/ObjLocator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/melUtils/createCurveBetweenTwoPoints.py" beforeDir="false" afterPath="$PROJECT_DIR$/pythonUtils/createCurveBetweenTwoPoints.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pythonUtils/JsonUtils.py" beforeDir="false" afterPath="$PROJECT_DIR$/pythonUtils/JsonUtils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pythonUtils/saveDataOnJson.py" beforeDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -64,24 +57,24 @@
       <usages-collector id="statistics.file.types.edit">
         <counts>
           <entry key="PLAIN_TEXT" value="7" />
-          <entry key="Python" value="977" />
+          <entry key="Python" value="982" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.extensions.open">
         <counts>
-          <entry key="py" value="2" />
+          <entry key="py" value="3" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.file.types.open">
         <counts>
-          <entry key="Python" value="2" />
+          <entry key="Python" value="3" />
         </counts>
       </usages-collector>
       <usages-collector id="statistics.vcs.git.usages" />
       <usages-collector id="statistics.file.extensions.edit">
         <counts>
           <entry key="dummy" value="4" />
-          <entry key="py" value="977" />
+          <entry key="py" value="982" />
           <entry key="txt" value="3" />
         </counts>
       </usages-collector>
@@ -101,11 +94,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="false">
+      <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/core/ObjLocator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="144">
-              <caret line="9" column="17" lean-forward="true" selection-start-line="9" selection-start-column="17" selection-end-line="9" selection-end-column="17" />
+            <state relative-caret-position="352">
+              <caret line="22" selection-start-line="22" selection-end-line="22" />
             </state>
           </provider>
         </entry>
@@ -113,7 +106,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/pythonUtils/createCurveBetweenTwoPoints.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="368">
+            <state relative-caret-position="384">
               <caret line="24" selection-start-line="24" selection-end-line="24" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
@@ -134,11 +127,11 @@
           </provider>
         </entry>
       </file>
-      <file pinned="false" current-in-tab="true">
+      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/core/ObjAnnotation.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="400">
-              <caret line="25" column="26" lean-forward="true" selection-start-line="25" selection-start-column="26" selection-end-line="25" selection-end-column="26" />
+            <state relative-caret-position="592">
+              <caret line="37" column="28" selection-start-line="37" selection-start-column="28" selection-end-line="37" selection-end-column="28" />
             </state>
           </provider>
         </entry>
@@ -146,10 +139,15 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/modulesCreator/ModuleCreator.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="480">
-              <caret line="30" column="35" lean-forward="true" selection-end-line="42" />
+            <state relative-caret-position="128">
+              <caret line="8" column="29" selection-start-line="8" selection-start-column="29" selection-end-line="8" selection-end-column="29" />
             </state>
           </provider>
+        </entry>
+      </file>
+      <file pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/pythonUtils/__init__.py">
+          <provider selected="true" editor-type-id="text-editor" />
         </entry>
       </file>
     </leaf>
@@ -185,9 +183,9 @@
         <option value="$PROJECT_DIR$/core/locatorCreate.py" />
         <option value="$PROJECT_DIR$/pythonUtils/saveDataOnJson.py" />
         <option value="$PROJECT_DIR$/pythonUtils/JsonUtils.py" />
-        <option value="$PROJECT_DIR$/modulesCreator/ModuleCreator.py" />
         <option value="$PROJECT_DIR$/core/ObjLocator.py" />
         <option value="$PROJECT_DIR$/core/ObjAnnotation.py" />
+        <option value="$PROJECT_DIR$/modulesCreator/ModuleCreator.py" />
       </list>
     </option>
   </component>
@@ -228,6 +226,11 @@
               <item name="openBBlib" type="b2602c69:ProjectViewProjectNode" />
               <item name="openBBlib" type="462c0819:PsiDirectoryNode" />
               <item name="pythonUtils" type="462c0819:PsiDirectoryNode" />
+            </path>
+            <path>
+              <item name="openBBlib" type="b2602c69:ProjectViewProjectNode" />
+              <item name="openBBlib" type="462c0819:PsiDirectoryNode" />
+              <item name="test" type="462c0819:PsiDirectoryNode" />
             </path>
           </expand>
           <select />
@@ -296,9 +299,8 @@
   </component>
   <component name="ToolWindowManager">
     <frame x="-8" y="-8" width="1936" height="1056" extended-state="6" />
-    <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" visible="true" weight="0.2260128" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2260128" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -345,23 +347,20 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/melUtils/test.py" />
     <entry file="file://$PROJECT_DIR$/melUtils/test.txt" />
-    <entry file="file://$PROJECT_DIR$/test/locatorCreate_old_pyMel.py">
+    <entry file="file://$PROJECT_DIR$/pythonUtils/__init__.py">
+      <provider selected="true" editor-type-id="text-editor" />
+    </entry>
+    <entry file="file://$PROJECT_DIR$/modulesCreator/ModuleCreator.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret selection-end-line="3" selection-end-column="29" />
-          <folding>
-            <element signature="e#0#24#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="128">
+          <caret line="8" column="29" selection-start-line="8" selection-start-column="29" selection-end-line="8" selection-end-column="29" />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/pythonUtils/createCurveBetweenTwoPoints.py">
+    <entry file="file://$PROJECT_DIR$/core/ObjAnnotation.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="368">
-          <caret line="24" selection-start-line="24" selection-end-line="24" />
-          <folding>
-            <element signature="e#0#23#0" expanded="true" />
-          </folding>
+        <state relative-caret-position="592">
+          <caret line="37" column="28" selection-start-line="37" selection-start-column="28" selection-end-line="37" selection-end-column="28" />
         </state>
       </provider>
     </entry>
@@ -375,24 +374,30 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/modulesCreator/ModuleCreator.py">
+    <entry file="file://$PROJECT_DIR$/pythonUtils/createCurveBetweenTwoPoints.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="480">
-          <caret line="30" column="35" lean-forward="true" selection-end-line="42" />
+        <state relative-caret-position="384">
+          <caret line="24" selection-start-line="24" selection-end-line="24" />
+          <folding>
+            <element signature="e#0#23#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/test/locatorCreate_old_pyMel.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state>
+          <caret selection-end-line="3" selection-end-column="29" />
+          <folding>
+            <element signature="e#0#24#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>
     <entry file="file://$PROJECT_DIR$/core/ObjLocator.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="144">
-          <caret line="9" column="17" lean-forward="true" selection-start-line="9" selection-start-column="17" selection-end-line="9" selection-end-column="17" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/core/ObjAnnotation.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="400">
-          <caret line="25" column="26" lean-forward="true" selection-start-line="25" selection-start-column="26" selection-end-line="25" selection-end-column="26" />
+        <state relative-caret-position="352">
+          <caret line="22" selection-start-line="22" selection-end-line="22" />
         </state>
       </provider>
     </entry>
