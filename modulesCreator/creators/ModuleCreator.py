@@ -64,6 +64,14 @@ class ModuleCreator(JsonUtils, ObjAnnotation, ObjLocator):
                     textAnn = i['nodeName']
                     annotation = ObjAnnotation(nameObj, nameAnn, textAnn, i['nodeName'], i['nodeName'], [])
 
+        mainGrpModuleCreator = nameDataJson+'_GRP'
+
+        for i in data[nameDataJson]:
+            if pm.uniqueObjExists(mainGrpModuleCreator):
+                pm.parent(i['nodeName'], mainGrpModuleCreator)
+            else:
+                pm.group(i['nodeName'], n=mainGrpModuleCreator)
+
     def getListLocs(self):
         data = self.jsonFile.readingDataFromJson()
         lenght = len(data)
