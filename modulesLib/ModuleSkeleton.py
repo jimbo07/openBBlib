@@ -1,5 +1,5 @@
 import pymel.core as pm
-from modulesLib import ModuleCreator
+#from modulesLib import ModuleCreator
 
 class ModuleSkeleton(ModuleCreator):
 

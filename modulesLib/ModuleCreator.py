@@ -1,7 +1,7 @@
 import pymel.core as pm
-from pythonUtils import JsonUtils
-from core import ObjLocator
-from core import ObjAnnotation
+#from pythonUtils import JsonUtils
+#from core import ObjLocator
+#from core import ObjAnnotation
 
 class ModuleCreator(JsonUtils, ObjAnnotation, ObjLocator):
 
