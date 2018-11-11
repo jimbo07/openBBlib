@@ -42,5 +42,5 @@ class ModuleSkeleton(ModuleCreator):
                 pm.parent(jointList[i], jointFather)
             else:
                 chainFather = jointList[i]
-
-        pm.joint(chainFather, e=True, oj='yxz', secondaryAxisOrient='zup', ch=True, zso=True);
+        #joint -e  -oj yzx -secondaryAxisOrient xup -ch -zso;
+        pm.joint(chainFather, e=True, oj='yzx', secondaryAxisOrient='xup', ch=True, zso=True);

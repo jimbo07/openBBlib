@@ -18,9 +18,9 @@ class TwistJointCreator(ModuleSkeleton):
             posEnd = pm.xform(childStartJoint, q=True, t=True, ws=True)
             autoGenCv = pm.curve( n=self.startJoint+'_twistJointsChain_CRV', d=1, p=[posStart, posEnd] )
             self.curve = autoGenCv
-            pm.rebuildCurve(self.curve, ch=True, rt=0, rpo=True, end=1, kr=0, kep=True, kt=0, d=3, s=4)
+            pm.rebuildCurve(self.curve, ch=True, rt=0, rpo=True, end=1, kr=0, kep=True, kt=0, d=3, s=10)
         else:
-            pm.rebuildCurve(self.curve, ch=True, rt=0, rpo=True, end=1, kr=0, kep=True, kt=0, d=3, s=4)
+            pm.rebuildCurve(self.curve, ch=True, rt=0, rpo=True, end=1, kr=0, kep=True, kt=0, d=3, s=10)
         
         pm.skinCluster(self.startJoint, childStartJoint, self.curve)
         pm.select(cl=True)
