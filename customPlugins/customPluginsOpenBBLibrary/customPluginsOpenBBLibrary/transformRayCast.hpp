@@ -24,6 +24,8 @@
 #include <maya/MEulerRotation.h>
 #include <maya/MArrayDataHandle.h>
 #include <maya/MObjectArray.h>
+#include <maya/MFnEnumAttribute.h>
+#include <maya/MFloatVectorArray.h>
 
 class transformRayCast : public MPxNode
 {
@@ -43,11 +45,13 @@ public:
 	// node attributes
 	static MObject		aInputTransformWorldMatrix;
 	static MObject		aInputTargetMesh;
+	static MObject		aInputTargetReflectionMesh;
 	static MObject		aOutputTransformMatrix;
 	static MObject		outTranslate;
 	static MObject		outTranslateX;
 	static MObject		outTranslateY;
 	static MObject		outTranslateZ;
+	static MObject		reflection;
 
 	//static MObject		aBlendWeight;
 };

@@ -7,3 +7,5 @@
 #include "simpleParentConstraint.hpp"
 #include "projectMesh.hpp"
 #include "transformRayCast.hpp"
+#include "arrowLocator.hpp"
+#include "reflectionLocator.h"

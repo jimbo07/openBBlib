@@ -11,14 +11,19 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="arrowLocator.hpp" />
     <ClInclude Include="basicBlendshape.hpp" />
+    <ClInclude Include="math.hpp" />
     <ClInclude Include="projectMesh.hpp" />
     <ClInclude Include="simpleBlendshape.hpp" />
     <ClInclude Include="Plugin.hpp" />
     <ClInclude Include="simpleParentConstraint.hpp" />
     <ClInclude Include="transformRayCast.hpp" />
+    <ClInclude Include="utilityOpenGL.hpp" />
+    <ClInclude Include="utilityOpenMaya.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="arrowLocator.cpp" />
     <ClCompile Include="basicBlendshape.cpp" />
     <ClCompile Include="Plugin.cpp" />
     <ClCompile Include="projectMesh.cpp" />

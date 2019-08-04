@@ -21,6 +21,9 @@ MStatus initializePlugin(MObject obj)
 	status = fnPlugin.registerNode("basicBlendshape", 0x00000002, basicBlendshape::creator, basicBlendshape::initialize, MPxNode::kDeformerNode);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
+	// MPxLocatorNode nodes registration
+	status = fnPlugin.registerNode("arrowLocator", 0x00000006, arrowLocator::creator, arrowLocator::initialize, MPxNode::kLocatorNode);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
 	return MS::kSuccess;
 }
 
@@ -43,6 +46,10 @@ MStatus uninitializePlugin(MObject obj)
 	status = fnPlugin.deregisterNode(0x00000001);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	status = fnPlugin.deregisterNode(0x00000002);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+
+	// MPxLocatorNode nodes de-registration
+	status = fnPlugin.deregisterNode(0x00000006);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	return MS::kSuccess;
