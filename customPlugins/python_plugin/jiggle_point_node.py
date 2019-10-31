@@ -2,6 +2,7 @@ import maya.OpenMayaMPx as OpenMayaMPx
 import maya.OpenMaya as OpenMaya
 import math
 VERSION = '1.0'
+DEBUG_MODE = False
 
 ## @brief A node that triggers shapes from of an orientation
 class JigglePoint(OpenMayaMPx.MPxNode):
@@ -36,7 +37,7 @@ class JigglePoint(OpenMayaMPx.MPxNode):
         # Get thi inputs
         damping = data.inputValue(self.aDamping).asFloat()
         stiffness = data.inputValue(self.aStiffness).asFloat()
-        goal = data.inputValue(self.aGoal).asFloatVector()
+        goal = OpenMaya.MPoint(data.inputValue(self.aGoal).asFloatVector())
         current_time = data.inputValue(self.aTime).asTime()
         parent_inverse = data.inputValue(self.aParentInverse).asMatrix()
         jiggle_amount = data.inputValue(self.aJiggleAmount).asFloat()
@@ -72,6 +73,11 @@ class JigglePoint(OpenMayaMPx.MPxNode):
         # involving the jiggle amount factor
         new_position = goal + ((new_position - goal) * jiggle_amount)
 
+        if DEBUG_MODE:
+            print new_position.x
+            print new_position.y
+            print new_position.z
+
         # caculatin the new position in the local space of the object which is affected
         new_position *= parent_inverse
 
@@ -105,6 +111,13 @@ def initialize():
     JigglePoint.addAttribute(JigglePoint.aGoal)
     JigglePoint.attributeAffects(JigglePoint.aGoal, JigglePoint.aOutput)
 
+    JigglePoint.aJiggleAmount = nAttr.create('jiggleAmount', 'jiggleAmount', OpenMaya.MFnNumericData.kFloat, 0.0)
+    nAttr.setKeyable(True)
+    nAttr.setMin(0.0)
+    nAttr.setMax(1.0)
+    JigglePoint.addAttribute(JigglePoint.aJiggleAmount)
+    JigglePoint.attributeAffects(JigglePoint.aJiggleAmount, JigglePoint.aOutput)
+
     JigglePoint.aDamping = nAttr.create('damping', 'damping', OpenMaya.MFnNumericData.kFloat, 1.0)
     nAttr.setKeyable(True)
     nAttr.setMin(0.0)
@@ -118,13 +131,6 @@ def initialize():
     nAttr.setMax(1.0)
     JigglePoint.addAttribute(JigglePoint.aStiffness)
     JigglePoint.attributeAffects(JigglePoint.aStiffness, JigglePoint.aOutput)
-
-    JigglePoint.aJiggleAmount = nAttr.create('jiggleAmount', 'jiggleAmount', OpenMaya.MFnNumericData.kFloat, 1.0)
-    nAttr.setKeyable(True)
-    nAttr.setMin(0.0)
-    nAttr.setMax(1.0)
-    JigglePoint.addAttribute(JigglePoint.aJiggleAmount)
-    JigglePoint.attributeAffects(JigglePoint.aJiggleAmount, JigglePoint.aOutput)
 
     # creating the time attribute
     JigglePoint.aTime = uAttr.create('time', 'time',  OpenMaya.MFnUnitAttribute.kTime, 0.0)
