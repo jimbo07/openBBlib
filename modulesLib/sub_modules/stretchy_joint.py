@@ -86,7 +86,9 @@ class StretchyJoint():
         else:
             cmds.xform(up_loc_grps[0], worldSpace=True, matrix=(cmds.xform(self.stretchy_chain[0], query=True, worldSpace=True, matrix=True)))
             ty = vectors_utils.vectors_distance_length(self.stretchy_chain[-1], self.stretchy_chain[0])
-            cmds.setAttr("{}.translateY".format(up_loc_grps[0]), ty)
+            cmds.setAttr("{}.translateY".format(up_loc_grps[1]), ty)
+
+        cmds.parentConstraint(self.start_loc[0], up_loc_grps[0], maintainOffset=True)
 
         # set-up ikHandle behaviour
         self.ik_handle_solver = cmds.ikHandle(name="{}_{}_rotatePlaneStretchy_IKH".format(self.side, self.name), solver="ikRPsolver", startJoint=self.stretchy_chain[0], endEffector=self.stretchy_chain[-1])
@@ -135,8 +137,40 @@ class StretchyJoint():
                 cmds.xform(self.twist_joitns_chain[i], worldSpace=True, matrix=(cmds.xform(self.start_twist_grp, query=True, worldSpace=True, matrix=True)))
                 cmds.makeIdentity(self.twist_joitns_chain[i], apply=True, t=True,  r=True, scale=True, n=False, pn=True)
                 distance_factor = distance_factor + unit
-                cmds.setAttr("{}.translateX".format(self.twist_joitns_chain[i]), distance_factor)
+                if self.side == "L":
+                    cmds.setAttr("{}.translateX".format(self.twist_joitns_chain[i]), distance_factor)
+                else:
+                    cmds.setAttr("{}.translateX".format(self.twist_joitns_chain[i]), distance_factor*(-1))
+        
+        # aimConstraint -mo -weight 1 -aimVector 1 0 0 -upVector 0 1 0 -worldUpType "object" -worldUpObject locator2;
+        cmds.aimConstraint(self.end_loc[0], self.start_twist_grp, aimVector=[1, 0, 0], upVector=[0, 1, 0], worldUpType="object", worldUpObject=self.up_loc[0], maintainOffset=True)
+        cmds.pointConstraint(self.start_loc[0], self.start_twist_grp, maintainOffset=True)
 
+        # set-up twist feature
+        # cmds.orientConstraint(self.end_loc[0], self.twist_joitns_chain[-1], maintainOffset=True)
+        mlm_node = cmds.createNode("multMatrix", name="{}_{}_opMatTwist_MLM".format(self.side, self.side))
+        dcm_node = cmds.createNode("decomposeMatrix", name="{}_{}_opMatTwist_DCM".format(self.side, self.side))
+        qte_node = cmds.createNode("quatToEuler", name="{}_{}_opMatTwist_QTE".format(self.side, self.side))
+
+        cmds.connectAttr("{}.worldMatrix[0]".format(self.end_loc[0]), "{}.matrixIn[0]".format(mlm_node), force=True)
+        cmds.connectAttr("{}.worldInverseMatrix[0]".format(self.start_loc[0]), "{}.matrixIn[1]".format(mlm_node), force=True)
+
+        cmds.connectAttr("{}.matrixSum".format(mlm_node), "{}.inputMatrix".format(dcm_node), force=True)
+        cmds.connectAttr("{}.outputQuatX".format(dcm_node), "{}.inputQuatX".format(qte_node), force=True)
+        cmds.connectAttr("{}.outputQuatW".format(dcm_node), "{}.inputQuatW".format(qte_node), force=True)
+
+        factor = 0.0
+        for i in range(0, self.number_twist_joints):
+            factor_unit = (1.0/self.number_twist_joints)
+            mld_node = cmds.createNode("multiplyDivide", name="{}_{}{}_opMatTwist_MLD".format(self.side, self.side, i))
+            cmds.connectAttr("{}.outputRotateX".format(qte_node), "{}.input1X".format(mld_node), force=True)
+            cmds.connectAttr("{}.outputX".format(mld_node), "{}.rotateX".format(self.twist_joitns_chain[i]), force=True)
+
+            if i == 0:
+                cmds.setAttr("{}.input2X".format(mld_node), 0.0)
+            else:
+                factor = factor + factor_unit
+                cmds.setAttr("{}.input2X".format(mld_node), factor)
 
         return True
 
