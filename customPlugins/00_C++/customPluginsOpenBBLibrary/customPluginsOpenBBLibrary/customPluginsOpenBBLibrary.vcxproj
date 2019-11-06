@@ -13,6 +13,7 @@
   <ItemGroup>
     <ClInclude Include="headers\arrowLocator.hpp" />
     <ClInclude Include="headers\basicBlendshape.hpp" />
+    <ClInclude Include="headers\jiggleDeformer.hpp" />
     <ClInclude Include="headers\math.hpp" />
     <ClInclude Include="headers\projectMesh.hpp" />
     <ClInclude Include="headers\simpleBlendshape.hpp" />
@@ -25,6 +26,7 @@
   <ItemGroup>
     <ClCompile Include="src\arrowLocator.cpp" />
     <ClCompile Include="src\basicBlendshape.cpp" />
+    <ClCompile Include="src\jiggleDeformer.cpp" />
     <ClCompile Include="src\Plugin.cpp" />
     <ClCompile Include="src\projectMesh.cpp" />
     <ClCompile Include="src\simpleBlandshape.cpp" />
