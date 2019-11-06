@@ -11,25 +11,25 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="arrowLocator.hpp" />
-    <ClInclude Include="basicBlendshape.hpp" />
-    <ClInclude Include="math.hpp" />
-    <ClInclude Include="projectMesh.hpp" />
-    <ClInclude Include="simpleBlendshape.hpp" />
-    <ClInclude Include="Plugin.hpp" />
-    <ClInclude Include="simpleParentConstraint.hpp" />
-    <ClInclude Include="transformRayCast.hpp" />
-    <ClInclude Include="utilityOpenGL.hpp" />
-    <ClInclude Include="utilityOpenMaya.hpp" />
+    <ClInclude Include="headers\arrowLocator.hpp" />
+    <ClInclude Include="headers\basicBlendshape.hpp" />
+    <ClInclude Include="headers\math.hpp" />
+    <ClInclude Include="headers\projectMesh.hpp" />
+    <ClInclude Include="headers\simpleBlendshape.hpp" />
+    <ClInclude Include="headers\Plugin.hpp" />
+    <ClInclude Include="headers\simpleParentConstraint.hpp" />
+    <ClInclude Include="headers\transformRayCast.hpp" />
+    <ClInclude Include="headers\utilityOpenGL.hpp" />
+    <ClInclude Include="headers\utilityOpenMaya.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="arrowLocator.cpp" />
-    <ClCompile Include="basicBlendshape.cpp" />
-    <ClCompile Include="Plugin.cpp" />
-    <ClCompile Include="projectMesh.cpp" />
-    <ClCompile Include="simpleBlandshape.cpp" />
-    <ClCompile Include="simpleParentConstraint.cpp" />
-    <ClCompile Include="transformRayCast.cpp" />
+    <ClCompile Include="src\arrowLocator.cpp" />
+    <ClCompile Include="src\basicBlendshape.cpp" />
+    <ClCompile Include="src\Plugin.cpp" />
+    <ClCompile Include="src\projectMesh.cpp" />
+    <ClCompile Include="src\simpleBlandshape.cpp" />
+    <ClCompile Include="src\simpleParentConstraint.cpp" />
+    <ClCompile Include="src\transformRayCast.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -65,11 +65,11 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <TargetExt>.mll</TargetExt>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Program Files\Autodesk\Maya2018\include</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Program Files\Autodesk\Maya2018\include;$(ProjectDir)headers</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetExt>.mll</TargetExt>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Program Files\Autodesk\Maya2018\include</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\Program Files\Autodesk\Maya2018\include;$(ProjectDir)headers</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>

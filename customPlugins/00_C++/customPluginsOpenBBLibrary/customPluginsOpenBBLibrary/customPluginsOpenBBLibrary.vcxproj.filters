@@ -18,57 +18,57 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Plugin.hpp">
+    <ClInclude Include="headers\arrowLocator.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="basicBlendshape.hpp">
+    <ClInclude Include="headers\basicBlendshape.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="simpleBlendshape.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="simpleParentConstraint.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="projectMesh.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="transformRayCast.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="utilityOpenMaya.hpp">
+    <ClInclude Include="headers\math.hpp">
       <Filter>Resource Files\lib</Filter>
     </ClInclude>
-    <ClInclude Include="math.hpp">
-      <Filter>Resource Files\lib</Filter>
-    </ClInclude>
-    <ClInclude Include="arrowLocator.hpp">
+    <ClInclude Include="headers\Plugin.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="utilityOpenGL.hpp">
+    <ClInclude Include="headers\projectMesh.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\simpleBlendshape.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\simpleParentConstraint.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\transformRayCast.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\utilityOpenGL.hpp">
+      <Filter>Resource Files\lib</Filter>
+    </ClInclude>
+    <ClInclude Include="headers\utilityOpenMaya.hpp">
       <Filter>Resource Files\lib</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Plugin.cpp">
+    <ClCompile Include="src\arrowLocator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="simpleBlandshape.cpp">
+    <ClCompile Include="src\basicBlendshape.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="basicBlendshape.cpp">
+    <ClCompile Include="src\Plugin.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="simpleParentConstraint.cpp">
+    <ClCompile Include="src\projectMesh.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="projectMesh.cpp">
+    <ClCompile Include="src\simpleBlandshape.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="transformRayCast.cpp">
+    <ClCompile Include="src\simpleParentConstraint.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="arrowLocator.cpp">
+    <ClCompile Include="src\transformRayCast.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
