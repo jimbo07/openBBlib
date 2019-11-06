@@ -9,3 +9,4 @@
 #include "transformRayCast.hpp"
 #include "arrowLocator.hpp"
 #include "reflectionLocator.h"
+#include "jiggleDeformer.hpp"

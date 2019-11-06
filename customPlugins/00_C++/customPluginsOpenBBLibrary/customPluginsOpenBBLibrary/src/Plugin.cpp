@@ -20,6 +20,8 @@ MStatus initializePlugin(MObject obj)
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	status = fnPlugin.registerNode("basicBlendshape", 0x00000002, basicBlendshape::creator, basicBlendshape::initialize, MPxNode::kDeformerNode);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = fnPlugin.registerNode("jiggleDeformer", 0x00000007, jiggleDeformer::creator, jiggleDeformer::initialize, MPxNode::kDeformerNode);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	// MPxLocatorNode nodes registration
 	status = fnPlugin.registerNode("arrowLocator", 0x00000006, arrowLocator::creator, arrowLocator::initialize, MPxNode::kLocatorNode);
