@@ -21,16 +21,17 @@ public:
 	virtual				~jiggleDeformer();
 
 	// deform function where in it there will be all the "core" of the node
-	virtual MStatus		deform(MDataBlock& data,
-		MItGeometry& itGeo,
-		const MMatrix& localToWorldMatrix,
-		unsigned int geomIndex);
+	virtual MStatus		deform(
+								MDataBlock& data,
+								MItGeometry& itGeo,
+								const MMatrix& localToWorldMatrix,
+								unsigned int geomIndex
+							   );
 
 	// methods for creating the instance of the node, and initialize all the attributes of the node itself
 	static void*		creator();
 	static MStatus		initialize();
 
 	// node attributes
-	
-	//static MObject		aBlendWeight;
+	static MObject			aGoal;
 };
