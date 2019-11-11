@@ -14,13 +14,15 @@ MStatus initializePlugin(MObject obj)
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	status = fnPlugin.registerNode("transformRayCast", 0x00000005, transformRayCast::creator, transformRayCast::initialize);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = fnPlugin.registerNode("jigglePoint", 0x00000007, jigglePoint::creator, jigglePoint::initialize);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	// MPxDeformerNode nodes registration
 	status = fnPlugin.registerNode("simpleBlendshape", 0x00000001, simpleBlendshape::creator, simpleBlendshape::initialize, MPxNode::kDeformerNode);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	status = fnPlugin.registerNode("basicBlendshape", 0x00000002, basicBlendshape::creator, basicBlendshape::initialize, MPxNode::kDeformerNode);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
-	status = fnPlugin.registerNode("jiggleDeformer", 0x00000007, jiggleDeformer::creator, jiggleDeformer::initialize, MPxNode::kDeformerNode);
+	status = fnPlugin.registerNode("jiggleDeformer", 0x00000008, jiggleDeformer::creator, jiggleDeformer::initialize, MPxNode::kDeformerNode);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	// MPxLocatorNode nodes registration
@@ -43,11 +45,15 @@ MStatus uninitializePlugin(MObject obj)
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	status = fnPlugin.deregisterNode(0x00000005);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = fnPlugin.deregisterNode(0x00000007);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	// MPxDeformerNode nodes de-registration
 	status = fnPlugin.deregisterNode(0x00000001);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 	status = fnPlugin.deregisterNode(0x00000002);
+	CHECK_MSTATUS_AND_RETURN_IT(status);
+	status = fnPlugin.deregisterNode(0x00000008);
 	CHECK_MSTATUS_AND_RETURN_IT(status);
 
 	// MPxLocatorNode nodes de-registration
