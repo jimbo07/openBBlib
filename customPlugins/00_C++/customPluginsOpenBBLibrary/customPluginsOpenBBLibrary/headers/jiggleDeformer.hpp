@@ -18,7 +18,7 @@
 #include <maya/MMatrix.h>
 #include <maya/MGlobal.h>
 #include <maya/MTime.h>
-
+#include <maya/MFnTypedAttribute.h>
 #include <maya/MItGeometry.h>
 
 #include <maya/MPxDeformerNode.h>
@@ -47,7 +47,7 @@ class jiggleDeformer : public MPxDeformerNode
 							   const MMatrix& mat,
 							   unsigned int mIndex);
 		
-		virtual MStatus setDependentsDirty(const MPlug& plug, MPlugArray& plugArray);
+		// virtual MStatus setDependentsDirty(const MPlug& plug, MPlugArray& plugArray);
 		static void* creator();
 		static MStatus initialize();
 
@@ -63,7 +63,8 @@ class jiggleDeformer : public MPxDeformerNode
 		static  MObject aJiggleMap;
 		static  MObject aStiffnessMap;
 		static  MObject aDampingMap;
-		static  MObject aPerGeometry;
+		// static  MObject aPerGeometry;
+		static  MObject aInBaseMesh;
 		static  MObject aWorldMatrix;
 
 	private:
@@ -72,14 +73,14 @@ class jiggleDeformer : public MPxDeformerNode
 
 
 		// Store everything per input geometry
-		std::map<unsigned int, MTime> previousTime_;
-		std::map<unsigned int, bool> initialized_;
-		std::map<unsigned int, bool> dirtyMap_;
-		std::map<unsigned int, MPointArray> previousPoints_;
-		std::map<unsigned int, MPointArray> currentPoints_;
-		std::map<unsigned int, MFloatArray> weights_;
-		std::map<unsigned int, MFloatArray> jiggleMap_;
-		std::map<unsigned int, MFloatArray> stiffnessMap_;
-		std::map<unsigned int, MFloatArray> dampingMap_;
-		std::map<unsigned int, MIntArray> membership_;
+		MTime previousTime_;
+		bool initialized_;
+		bool dirtyMap_;
+		MPointArray previousPoints_;
+		MPointArray currentPoints_;
+		MFloatArray weights_;
+		MFloatArray jiggleMap_;
+		MFloatArray stiffnessMap_;
+		MFloatArray dampingMap_;
+		MIntArray membership_;
 };
