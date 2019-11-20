@@ -32,6 +32,7 @@
 
 
 #include <stdio.h>
+#include <iostream>
 #include <math.h>
 #include <map>
 #include <omp.h>

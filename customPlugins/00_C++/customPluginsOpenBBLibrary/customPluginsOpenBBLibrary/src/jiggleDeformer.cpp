@@ -1,4 +1,5 @@
 #include "jiggleDeformer.hpp"
+using namespace std;
 
 // MTypeId jiggleDeformer::id;
 MObject jiggleDeformer::aTime;
@@ -45,7 +46,7 @@ extern "C" MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, 
 	MPointArray currentPoints = jiggleDeformer::currentPoints_;
 	MPointArray previousPoints = jiggleDeformer::previousPoints_;
 	MTime previousTime = jiggleDeformer::previousTime_;
-
+	/*
 	// Initialize the point states
 	if (!initialized_)
 	{
@@ -68,7 +69,18 @@ extern "C" MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, 
 		previousTime = currentTime;
 		return MS::kSuccess;
 	}
+	*/
+	cout << "I'M HERE" << endl;
+	MPoint singlePoint;
 
+	for (; !itGeo.isDone(); itGeo.next())
+	{
+		singlePoint = itGeo.position();
+		cout << "Point: [" << singlePoint.x << ", " << singlePoint.y << ", " << singlePoint.z << ", " << endl;
+		// std::cout << "Point: [" << points[i].x << ", " << points[i].y << ", " << points[i].z << ", " << std::endl;
+	}
+
+	/*
 	// get the geometry from the output one
 	MDataHandle hGeo = data.inputValue(outputGeom);
 	MMatrix matrixGeo = hGeo.child(aWorldMatrix).asMatrix();
@@ -140,7 +152,7 @@ extern "C" MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, 
 
 	itGeo.setAllPositions(points);
 	previousTime = currentTime;
-
+	*/
 	return MS::kSuccess;
 }
 
