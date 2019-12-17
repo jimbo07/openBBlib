@@ -5,6 +5,8 @@ except ImportError:
     import traceback
     traceback.print_exc()
 
+DEBUG_MODE = True
+
 from . import transforms_utils
 
 def related_clean_joint_chain(main_chain, side, name, full_name = False):
@@ -19,6 +21,10 @@ def related_clean_joint_chain(main_chain, side, name, full_name = False):
     final_chain = []
     cmds.select(clear=True)
     for i, obj in enumerate(main_chain):
+
+        if DEBUG_MODE:
+            print "joint involved : {}".format(obj)
+
         if full_name:
             jnt = cmds.joint(name="{}_{}_JNT".format(obj[:len(obj)-4], name))
         else:
@@ -31,6 +37,12 @@ def related_clean_joint_chain(main_chain, side, name, full_name = False):
 
 def duplicate_chain(main_chain, type_chain = 0, name_chain = "duplicated"):
     """
+    duplicate the joint chain given as a input and rename it
+
+    Args:
+
+    Returns:
+
     """
     cmds.select(clear=True)
         
@@ -64,6 +76,12 @@ def duplicate_chain(main_chain, type_chain = 0, name_chain = "duplicated"):
 
 def rename_chain(string_bit, chain):
     """
+    renaming an entire joint chain
+
+    Args:
+
+    Returns:
+    
     """
     chain_renamed = []
     reversed_list = chain[::-1]
@@ -97,6 +115,12 @@ def rename_chain(string_bit, chain):
 
 def get_joints_chain(joint_father, joints = []):
     """
+    get the entire joint chain hierarchy just passing the father joint
+
+    Args:
+
+    Returns:
+    
     """
     if cmds.nodeType(joint_father) == "joint":
         joints.append(joint_father)
@@ -116,6 +140,12 @@ def get_joints_chain(joint_father, joints = []):
 
 def joint_chain_in_between(name, start_jnt, end_jnt, joint_number, main_axis = "X"):
     """
+    creating a straight joint chain all along the two objs given as input
+
+    Args:
+
+    Returns:
+    
     """
     joint_chain = []
     if main_axis == "" or main_axis == None:
@@ -148,38 +178,3 @@ def joint_chain_in_between(name, start_jnt, end_jnt, joint_number, main_axis = "
         
     return joint_chain
 
-
-def poleVectorPos(chain, factor=0.5):
-    """
-    returns a worldspace position based on the supplied three joints
-    
-    # Example
-    loc = cmds.spaceLocator()[0]
-    chain = ['jnt_armUpper_left', 'jnt_armLower_left', 'jnt_hand_left']
-    pos = poleVectorPos(chain)
-    cmds.xform(loc , ws =1 , t= (pos[0], pos[1], pos[2])) 
-    """
-    start = cmds.xform(chain[0], q=1 , ws=1, t=1)
-    mid = cmds.xform(chain[1], q=1, ws=1, t=1)
-    end = cmds.xform(chain[2], q=1, ws=1, t=1)
-    
-    startV = OpenMaya.MVector(start[0], start[1], start[2])
-    midV = OpenMaya.MVector(mid[0], mid[1], mid[2])
-    endV = OpenMaya.MVector(end[0], end[1], end[2])
-    
-    startEnd = endV - startV
-    startMid = midV - startV
-    
-    dotP = startMid * startEnd
-    proj = float(dotP) / float(startEnd.length())  #
-    
-    startEndN = startEnd.normal()
-    projV = startEndN * proj
-    
-    arrowV = startMid - projV
-    finalV = arrowV + midV
-    poleToMid = finalV - midV
-    arrowV *= (startEnd.length() / poleToMid.length()) * factor
-    finalV = arrowV + midV
-    
-    return (finalV.x , finalV.y, finalV.z)
