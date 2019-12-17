@@ -12,7 +12,7 @@ class DagNode():
         self.m_obj = OM.MObject()
         self.dag_path = OM.MDagPath()
 
-        selection_list = newOM.MSelectionList()
+        selection_list = OM.MSelectionList()
         selection_list.add( node )
 
         self.m_obj = selection_list.getDependNode(0)
