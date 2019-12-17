@@ -1,4 +1,4 @@
-from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils
+from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils, polevectors_utils
 from ...controls import controller
 from ...sub_modules import stretchy_joint, twist_chain
 
@@ -10,6 +10,7 @@ reload(dag_node)
 reload(transforms_utils)
 reload(stretchy_joint)
 reload(twist_chain)
+reload(polevectors_utils)
 
 try:
     from maya import cmds, mel
@@ -33,10 +34,17 @@ class LegLimb():
                     heel_loc = "", 
                     inner_loc = "", 
                     outer_loc = "",
-                    make_twist_chain = False, 
+                    twist_chain = False, 
                     central_transform = None
                 ):
+        """
+        Class Constructor
 
+        Args:
+
+        Returns:
+
+        """
         self.name = name
         self.main_chain = main_chain        
         self.root_jnt = root_jnt
@@ -47,7 +55,7 @@ class LegLimb():
         self.heel_loc = heel_loc
         self.inner_loc = inner_loc
         self.outer_loc = outer_loc
-        self.make_twist_chain = make_twist_chain 
+        self.twist_chain = twist_chain 
         self.central_transform = central_transform
 
         self.world_space_loc = None
@@ -76,6 +84,14 @@ class LegLimb():
         self.main_grp = "{}_{}_system_GRP".format(self.side, self.name)
 
     def create_driver_joint_chain(self):
+        """
+        Creating the drive chain, the ultimate chain of joints that will guide the main skeleleton
+
+        Args:
+
+        Returns:
+
+        """
         self.driver_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "driver", True)
         return self.driver_chain
                    
@@ -114,7 +130,7 @@ class LegLimb():
         cmds.setAttr("{}.visibility".format(grp_name[0]), 0)
         
         return [loc_name, grp_name[0]]
-
+    '''
     def no_flip_IK(self, pole_vector_offset_grp):
         """
         building up a system of transforms which helps the flipping issue of the ik systems
@@ -150,7 +166,7 @@ class LegLimb():
         cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=1, value=1.0)        
 
         return [no_flip_offset_aiming_grp, no_flip_offset_pelvis_grp]
-
+    '''
     def fk_system(self):
         """
         building up the fk system
@@ -199,6 +215,12 @@ class LegLimb():
 
     def roll_locs_hierarchy(self):
         """
+        creating the right hierarchy for dealing with the foot rolls
+
+        Args:
+
+        Returns:
+
         """
         rolls_grps = []
 
@@ -229,26 +251,22 @@ class LegLimb():
 
     def foot_roll_system(self, rools_data):
         """
+        building up the foot rolls system
+
+        Args:
+
+        Returns:
+
         """
         # reversing the chain
         tmp_foot_chain = [self.main_chain[2], self.main_chain[3], self.main_chain[4]]
         self.foot_chain = joints_utils.related_clean_joint_chain(tmp_foot_chain, self.side, "footRoll", True)
-        '''
-        jnt_chain = []
-        joints_utils.get_joints_chain(self.foot_chain[0], jnt_chain)
-        cmds.parent(jnt_chain, world=True)
-        for i in range(len(self.foot_chain)-1, 0, -1):            
-            cmds.parent(self.foot_chain[i-1], self.foot_chain[i])
-        '''
-        # constraint the first joint of the reverse chain with the outerLoc, to get the side rolls
-        # cmds.parentConstraint(self.outer_loc, self.foot_chain[-1], maintainOffset=True)
 
         # ik handles
         ball_ik_handle = cmds.ikHandle(name="{}_{}_ballRoll_IKH".format(self.side, self.name), solver="ikSCsolver", startJoint=self.foot_chain[0], endEffector=self.foot_chain[1])
         cmds.parent(ball_ik_handle[0], self.ball_loc)
         tip_ik_handle = cmds.ikHandle(name="{}_{}_tipRoll_IKH".format(self.side, self.name), solver="ikSCsolver", startJoint=self.foot_chain[1], endEffector=self.foot_chain[2])    
         cmds.parent(tip_ik_handle[0], self.outer_loc)
-
 
         # foot rools attribute
         attributes_utils.add_separator(self.main_ctrl.get_control(), "footAttributes")
@@ -329,14 +347,20 @@ class LegLimb():
         
         driver_ctrls_offset_grp.append(self.poleVector_ctrl.get_offset_grp())
 
-        transforms_utils.align_objs(ik_poleVector[0], self.poleVector_ctrl.get_offset_grp())
+        transforms_utils.align_objs(ik_poleVector[0], self.poleVector_ctrl.get_offset_grp(), True, False)
 
         cmds.parent(ik_poleVector[1], self.poleVector_ctrl.get_control())
 
         # no flip Ik ---> pole vector system
+        no_flip_fix_grps = polevectors_utils.no_flip_pole_vector(self.name, self.ik_chain[0], self.main_ctrl.get_control(), self.root_jnt, self.poleVector_ctrl.get_control(), self.poleVector_ctrl.get_offset_grp(), [self.world_space_loc[0]], ["world"], self.side)
+        self.ik_system_objs.extend(no_flip_fix_grps)
         # no_flip_fix_grps = self.no_flip_IK(self.poleVector_ctrl.get_offset_grp())
         # self.ik_system_objs.extend(no_flip_fix_grps)
 
+        # adding the poleVector arrow
+        annotation = polevectors_utils.pole_vector_arrow(self.ik_chain[1], self.poleVector_ctrl.get_control(), name="{}_{}_poleVector_ANT".format(self.side, self.name))
+        driver_ctrls_offset_grp.append(annotation)
+        
         # parent constraint the foot part of the ik_chain to the reverse chain
         cmds.parentConstraint(self.foot_chain[1], self.ik_chain[3], maintainOffset=True)
         cmds.parentConstraint(self.foot_chain[2], self.ik_chain[4], maintainOffset=True)
@@ -360,13 +384,22 @@ class LegLimb():
     def chains_connection(self):
         """
         create the connections between the two systems (ik/fk) and driver with those two the final chain
+
+        Args:
+
+        Returns:
+
         """
         grp_objs = []
 
-        central_transform_name = "{}_{}_central_LOC".format(self.side, self.name)
-        name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
+        if self.central_transform == None or self.central_transform == "":
+            central_transform_name = "{}_{}_central_LOC".format(self.side, self.name)
+            name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
+        else:
+            central_transform_name = self.central_transform
+            name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
 
-        if not cmds.objExists(central_transform_name) or self.central_transform == None:
+        if not cmds.objExists(central_transform_name):
             loc = cmds.spaceLocator(name=central_transform_name)
             self.central_transform = loc[0]
 
@@ -404,8 +437,14 @@ class LegLimb():
 
         return True
 
-    def make_twist_chain_modules(self):
+    def twist_chain_modules(self):
         """
+        adding the twist chain feature calling back the sub-module
+
+        Args:
+
+        Returns:
+
         """
         # test with new twisty chain
         name_bit_twist_system = self.main_chain[0][2 : len(self.main_chain[0])-4]
@@ -444,6 +483,12 @@ class LegLimb():
     
     def module_main_grp(self, list_objs):
         """
+        re-group all things related to the internal system of the module in one main group
+
+        Args:
+
+        Returns:
+
         """
         if cmds.objExists(self.main_grp):
             cmds.parent(list_objs, self.main_grp)
@@ -457,6 +502,11 @@ class LegLimb():
     def run(self):
         """
         run the module and get the final result
+
+        Args:
+
+        Returns:
+
         """
 
         print("###--- Module BipedLeg --- START ---###")
@@ -477,8 +527,8 @@ class LegLimb():
 
         self.chains_connection()
 
-        if self.make_twist_chain:
-            self.make_twist_chain_modules()
+        if self.twist_chain:
+            self.twist_chain_modules()
 
         # Temporary switch control
         self.switch_ctrl = controller.Control("{}_{}_switch".format(self.side, self.name), 3.0, 's', self.main_chain[-1], '', '', ['t', 'r', 's', 'v'], '', True, True, False)
