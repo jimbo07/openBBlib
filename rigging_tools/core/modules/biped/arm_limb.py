@@ -29,17 +29,24 @@ class ArmLimb():
                     clavicle_jnt,
                     pelvis_ctrl = "",
                     side = "C", 
-                    make_twist_chain = False, 
+                    twist_chain = False, 
                     central_transform = None
                 ):
+        """
+        Class Constructor
 
+        Args:
+
+        Returns:
+
+        """
         self.name = name
         self.main_chain = main_chain
         self.root_jnt = root_jnt
         self.clavicle_jnt = clavicle_jnt
         self.pelvis_ctrl = pelvis_ctrl,
         self.side = side
-        self.make_twist_chain = make_twist_chain 
+        self.twist_chain = twist_chain 
         self.central_transform = central_transform
         
         self.world_space_loc = None
@@ -69,6 +76,14 @@ class ArmLimb():
 
 
     def create_driver_joint_chain(self):
+        """
+        Creating the drive chain, the ultimate chain of joints that will guide the main skeleleton
+
+        Args:
+
+        Returns:
+
+        """
         self.driver_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "driver", True)
         return self.driver_chain
 
@@ -162,7 +177,7 @@ class ArmLimb():
 
         self.ik_system_objs.append(self.ik_chain[0])
 
-        self.hand_ik_ctrl = controller.Control("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 5.0, 'cube', self.main_chain[2], self.main_chain[2], '', ['s', 'v'], '', True, True, False)
+        self.hand_ik_ctrl = controller.Control("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 5.0, 'cube', self.main_chain[2], '', '', ['s', 'v'], '', True, True, False)
         self.hand_ik_ctrl.make_dynamic_pivot("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 2.5, self.hand_ik_ctrl.get_control(), self.hand_ik_ctrl.get_control())
         driver_ctrls_offset_grp.append(self.hand_ik_ctrl.get_offset_grp())
 
@@ -183,14 +198,20 @@ class ArmLimb():
         
         driver_ctrls_offset_grp.append(self.poleVector_ctrl.get_offset_grp())
 
-        transforms_utils.align_objs(ik_poleVector[0], self.poleVector_ctrl.get_offset_grp())
+        transforms_utils.align_objs(ik_poleVector[0], self.poleVector_ctrl.get_offset_grp(), True, False)
 
         cmds.parent(ik_poleVector[1], self.poleVector_ctrl.get_control())
 
         # no flip Ik ---> pole vector system
+        # no_flip_fix_grps = polevectors_utils.no_flip_pole_vector(self.name, self.ik_chain[0], self.hand_ik_ctrl.get_control(), self.root_jnt, self.poleVector_ctrl.get_control(), self.poleVector_ctrl.get_offset_grp(), [self.world_space_loc[0]], ["world"], self.side)
+        # self.ik_system_objs.extend(no_flip_fix_grps)
         # no_flip_fix_grps = self.no_flip_IK(self.poleVector_ctrl.get_offset_grp())
         # self.ik_system_objs.extend(no_flip_fix_grps)
 
+        # adding the poleVector arrow
+        annotation = polevectors_utils.pole_vector_arrow(self.ik_chain[1], self.poleVector_ctrl.get_control(), name="{}_{}_poleVector_ANT".format(self.side, self.name))
+        driver_ctrls_offset_grp.append(annotation)
+        
         # clean the scene
         self.ik_system_objs.append(self.ik_chain[0])
         
@@ -203,6 +224,12 @@ class ArmLimb():
     
     def clavicle_shoulder_system(self):
         """
+        building up an auto-clavicle system
+
+        Args:
+
+        Returns:
+
         """
 
         self.shoulder_ctrl = controller.Control("{}_start_ik".format(self.main_chain[0][:len(self.main_chain[0])-4]), 5.0, 'circleFourArrows', self.main_chain[0], self.main_chain[0], '', ['r', 's', 'v'], '', True, True, False)
@@ -273,13 +300,22 @@ class ArmLimb():
     def chains_connection(self):
         """
         create the connections between the two systems (ik/fk) and driver with those two the final chain
+
+        Args:
+
+        Returns:
+
         """
         grp_objs = []
 
-        central_transform_name = "{}_{}_central_LOC".format(self.side, self.name)
-        name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
+        if self.central_transform == None or self.central_transform == "":
+            central_transform_name = "{}_{}_central_LOC".format(self.side, self.name)
+            name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
+        else:
+            central_transform_name = self.central_transform
+            name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
 
-        if not cmds.objExists(central_transform_name) or self.central_transform == None:
+        if not cmds.objExists(central_transform_name):
             loc = cmds.spaceLocator(name=central_transform_name)
             self.central_transform = loc[0]
 
@@ -319,6 +355,12 @@ class ArmLimb():
 
     def twist_chain_modules(self):
         """
+        callback the twist chain sub-module for creating the twist chain between limb bits
+
+        Args:
+
+        Returns:
+
         """
         # test with new twisty chain
         name_bit_twist_system = self.main_chain[0][2 : len(self.main_chain[0])-4]
@@ -357,6 +399,12 @@ class ArmLimb():
     
     def module_main_grp(self, list_objs):
         """
+        parent all the system's bits under the same group
+
+        Args:
+
+        Returns:
+
         """
         if cmds.objExists(self.main_grp):
             cmds.parent(list_objs, self.main_grp)
@@ -370,6 +418,11 @@ class ArmLimb():
     def run(self):
         """
         run the module and get the final result
+
+        Args:
+
+        Returns:
+
         """
 
         print("###--- Module BipedLeg --- START ---###")
@@ -390,7 +443,7 @@ class ArmLimb():
 
         self.clavicle_shoulder_system()
 
-        if self.make_twist_chain:
+        if self.twist_chain:
             self.twist_chain_modules()
 
         # Temporary switch control
