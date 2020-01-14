@@ -30,6 +30,7 @@
 #include <maya/MFnData.h>
 #include <maya/MThreadPool.h>
 
+#include <maya/MStreamUtils.h>
 
 #include <stdio.h>
 #include <iostream>

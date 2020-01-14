@@ -1,5 +1,4 @@
 #include "jiggleDeformer.hpp"
-using namespace std;
 
 // MTypeId jiggleDeformer::id;
 MObject jiggleDeformer::aTime;
@@ -22,13 +21,13 @@ jiggleDeformer::jiggleDeformer() {};
 jiggleDeformer::~jiggleDeformer() {};
 
 // creator method for retrieving the instance of the object basicBlendshape
-extern "C" void* jiggleDeformer::creator()
+void* jiggleDeformer::creator()
 {
 	return new jiggleDeformer();
 }
 
 // deform method where the deformation is actually computed
-extern "C" MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, const MMatrix& localToWorldMatrix, unsigned int geomIndex)
+MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, const MMatrix& localToWorldMatrix, unsigned int geomIndex)
 {
 	MStatus status;
 
@@ -46,7 +45,7 @@ extern "C" MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, 
 	MPointArray currentPoints = jiggleDeformer::currentPoints_;
 	MPointArray previousPoints = jiggleDeformer::previousPoints_;
 	MTime previousTime = jiggleDeformer::previousTime_;
-	/*
+	
 	// Initialize the point states
 	if (!initialized_)
 	{
@@ -69,18 +68,17 @@ extern "C" MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, 
 		previousTime = currentTime;
 		return MS::kSuccess;
 	}
-	*/
-	cout << "I'M HERE" << endl;
+	
+		
 	MPoint singlePoint;
 
 	for (; !itGeo.isDone(); itGeo.next())
 	{
 		singlePoint = itGeo.position();
-		cout << "Point: [" << singlePoint.x << ", " << singlePoint.y << ", " << singlePoint.z << ", " << endl;
-		// std::cout << "Point: [" << points[i].x << ", " << points[i].y << ", " << points[i].z << ", " << std::endl;
+
 	}
 
-	/*
+	
 	// get the geometry from the output one
 	MDataHandle hGeo = data.inputValue(outputGeom);
 	MMatrix matrixGeo = hGeo.child(aWorldMatrix).asMatrix();
@@ -107,12 +105,23 @@ extern "C" MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, 
 	stiffnessMap = hStiffnessMap.asFloat();
 	dampingMap = hDampingMap.asFloat();
 
+	
+
+	std::cout << "jiggleMap:" << std::endl;
+	std::cout << jiggleMap << endl;
+	std::cout << "stiffnessMap:" << std::endl;
+	std::cout << stiffnessMap << endl;
+	std::cout << "dampingMap:" << std::endl;
+	std::cout << dampingMap << endl;
+
 	// get real value from maps data handle
 	for (; !itGeo.isDone(); itGeo.next())
 	{
 		weights = weightValue(data, geomIndex, itGeo.index());
+		// std::cout << "baseWeights:" << std::endl;
+		// std::cout << weights << endl;
 	}
-
+	/*
 	MPoint goal, newPos;
 	MVector velocity, goalForce, displacement;
 	float damping, stiffness;
@@ -157,7 +166,7 @@ extern "C" MStatus jiggleDeformer::deform(MDataBlock& data, MItGeometry& itGeo, 
 }
 
 // initialize method for al the attribute fo the node
-extern "C" MStatus jiggleDeformer::initialize()
+MStatus jiggleDeformer::initialize()
 {
 	MStatus status;
 	MFnMatrixAttribute mAttr;
