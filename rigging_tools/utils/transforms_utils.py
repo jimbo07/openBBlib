@@ -42,7 +42,7 @@ def make_spaces(obj, obj_offset_trs, attribute_name, spaces, naming=None):
             if spaces != [] or spaces != None:
                 
                 name_attr = ""
-                if attribute_name != "" or attribute_name != None:
+                if attribute_name != "":
                     name_attr = attribute_name
                 else:
                     name_attr = "spaces"
@@ -57,6 +57,7 @@ def make_spaces(obj, obj_offset_trs, attribute_name, spaces, naming=None):
                     print naming
                     print enum_values
 
+                attributes_utils.add_separator(obj, "spacesAttributes")
                 attributes_utils.add_enum_attr(obj, name_attr, enum_values)
                 pac = cmds.parentConstraint(spaces, obj_offset_trs, maintainOffset=True)
                 
@@ -81,6 +82,8 @@ def align_objs(driver, driven, translation=True, rotation=True):
     """
     if translation == True and rotation == True:
         cmds.xform(driven, worldSpace=True, matrix=(cmds.xform(driver, query=True, worldSpace=True, matrix=True)))
+        # cmds.xform(driven, worldSpace=True, translation=(cmds.xform(driver, query=True, worldSpace=True, translation=True)))
+        # cmds.xform(driven, worldSpace=True, rotation=(cmds.xform(driver, query=True, worldSpace=True, rotation=True)))
     elif translation == True and rotation == False:
         cmds.xform(driven, worldSpace=True, translation=(cmds.xform(driver, query=True, worldSpace=True, translation=True)))
     elif translation == False and rotation == True:

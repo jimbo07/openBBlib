@@ -1,7 +1,6 @@
 try:
     from maya import cmds, mel
-    from maya.api import OpenMaya as om
-    from maya import OpenMaya as omOld
+    from maya.api import OpenMaya as OM
 except ImportError:
     import traceback
     traceback.print_exc()
@@ -14,25 +13,17 @@ def get_MVector_obj(obj):
     """
     """
     position_obj = cmds.xform(obj, query=True, worldSpace=True, translation=True)
-    vector = om.MVector(position_obj[0], position_obj[1], position_obj[2])
+    vector = OM.MVector(position_obj[0], position_obj[1], position_obj[2])
     
     return vector
 
 def distance_between(first_vector, second_vector):
     """
     """
-    sub_mVector = om.MVector()
+    sub_mVector = OM.MVector()
     distance = 0.0
 
     sub_mVector = second_vector - first_vector
     distance = sub_mVector.length()
-
-    '''
-    if isinstance(first_vector, om.MVector()) or isinstance(second_vector, om.MVector()):
-        sub_mVector = second_vector - first_vector
-        distance = sub_mVector.length()
-    else:
-        cmds.warning("One or more arguments passed isn't a MVector class instance")
-    '''
 
     return distance

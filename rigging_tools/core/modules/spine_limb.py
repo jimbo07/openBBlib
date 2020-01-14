@@ -29,7 +29,14 @@ class SpineLimb():
                     num_ik_middle_ctrls = 3, 
                     central_transform = None
                 ):
+        """
+        Class constructor
 
+        Args:
+
+        Returns:
+
+        """
         self.name = name
         self.side = side
         
@@ -67,11 +74,25 @@ class SpineLimb():
         
 
     def create_driver_joint_chain(self):
+        """
+        building up the final driver chain which will drive the final skeleton one
+
+        Args:
+
+        Returns:
+
+        """
         self.driver_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "driver", True)
         return self.driver_chain
 
     def fk_system(self):
         """
+        building up the fk system
+
+        Args:
+
+        Returns:
+
         """       
         self.fk_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "fk", True)
         self.fk_system_objs.append(self.fk_chain[0])
@@ -108,6 +129,12 @@ class SpineLimb():
 
     def ik_system(self):
         """
+        building up the ik system
+
+        Args:
+
+        Returns:
+
         """
         self.ik_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "ikSpine", True)
         self.ik_system_objs.append(self.ik_chain[0])
@@ -233,12 +260,12 @@ class SpineLimb():
         for i, jnt in enumerate(driver_joints):
             if i == 0:
                 self.start_ik_ctrl = controller.Control("{}_{}_start_ik".format(self.side, self.name), 5.0, 'cube', jnt, jnt, '', ['s', 'v'], '', True, True, False)
-                self.start_ik_ctrl.make_dynamic_pivot("{}_{}_startPivot_ik_".format(self.side, self.name), 2.5, ctrl.get_control(), ctrl.get_control())
+                self.start_ik_ctrl.make_dynamic_pivot("{}_{}_startPivot_ik_".format(self.side, self.name), 2.5, self.start_ik_ctrl.get_control(), self.start_ik_ctrl.get_control())
                 ik_controls.append(self.start_ik_ctrl)
                 cmds.parentConstraint(self.start_ik_ctrl.get_control(), jnt, maintainOffset=True)
             elif i == len(driver_joints) - 1:
                 self.end_ik_ctrl = controller.Control("{}_{}_end_ik".format(self.side, self.name), 5.0, 'cube', jnt, jnt, '', ['s', 'v'], '', True, True, False)
-                ctrl.make_dynamic_pivot("{}_{}_endPivot_ik_".format(self.side, self.name), 2.5, ctrl.get_control(), ctrl.get_control())
+                self.end_ik_ctrl.make_dynamic_pivot("{}_{}_endPivot_ik_".format(self.side, self.name), 2.5, self.end_ik_ctrl.get_control(), self.end_ik_ctrl.get_control())
                 ik_controls.append(self.end_ik_ctrl)
                 cmds.parentConstraint(self.end_ik_ctrl.get_control(), jnt, maintainOffset=True)
             else:
@@ -255,9 +282,10 @@ class SpineLimb():
             elif i == len(ik_controls) - 1:
                 continue
             else:
-                pac = cmds.parentConstraint([self.world_space_loc[0], ik_controls[0].get_control(), ik_controls[-1].get_control()], ik_controls_offset_grps[i], maintainOffset=True)
+                pac = cmds.parentConstraint([self.world_space_loc[0], ik_controls[0].get_control(), ik_controls[-1].get_control()], ctrl.get_offset_grp(), maintainOffset=True)
+                cmds.setAttr("{}.interpType".format(pac[0]), 2)
                 name_attr = "startEndFollow"
-                attributes_utils.add_float_attr(ctrl, name_attr, -5.0, 10.0, 0.0)
+                attributes_utils.add_float_attr(ctrl.get_control(), name_attr, -5.0, 10.0, 0.0)
                 cmds.setDrivenKeyframe(pac, attribute="{}W0".format(self.world_space_loc[0]), currentDriver="{}.{}".format(ctrl.get_control(), name_attr), driverValue=-5.0, value=1.0)
                 cmds.setDrivenKeyframe(pac, attribute="{}W0".format(self.world_space_loc[0]), currentDriver="{}.{}".format(ctrl.get_control(), name_attr), driverValue=0.0, value=0.0)
                 cmds.setDrivenKeyframe(pac, attribute="{}W0".format(self.world_space_loc[0]), currentDriver="{}.{}".format(ctrl.get_control(), name_attr), driverValue=10.0, value=0.0)
@@ -268,15 +296,15 @@ class SpineLimb():
                 cmds.setDrivenKeyframe(pac, attribute="{}W2".format(ik_controls[-1].get_control()), currentDriver="{}.{}".format(ctrl.get_control(), name_attr), driverValue=0.0, value=0.0)
                 cmds.setDrivenKeyframe(pac, attribute="{}W2".format(ik_controls[-1].get_control()), currentDriver="{}.{}".format(ctrl.get_control(), name_attr), driverValue=10.0, value=1.0)
                 follow_factor += 10.0/float(self.num_ik_middle_ctrls + 1.0)
-                cmds.setAttr("{}.{}".format(ik_controls[i], name_attr), follow_factor)
+                cmds.setAttr("{}.{}".format(ctrl.get_control(), name_attr), follow_factor)
 
         # clean up the scene
         cmds.group(empty=True, name=self.ik_ctrls_main_grp)
         for ctrl  in ik_controls:
-            cmds.parent(ik_controls.get_offset_grp(), self.ik_ctrls_main_grp)
+            cmds.parent(ctrl.get_offset_grp(), self.ik_ctrls_main_grp)
 
         ik_system_grp = cmds.group(empty=True, name="{}_{}_ikSystem_GRP".format(self.side, self.name))
-        cms.parent(self.ik_system_objs, ik_system_grp)
+        cmds.parent(self.ik_system_objs, ik_system_grp)
 
         self.module_main_grp(ik_system_grp)
 
@@ -293,13 +321,22 @@ class SpineLimb():
     def chains_connection(self):
         """
         create the connections between the two systems (ik/fk) and driver with those two the final chain
+
+        Args:
+
+        Returns:
+
         """
         grp_objs = []
 
-        central_transform_name = "{}_{}_central_LOC".format(self.side, self.name)
-        name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
+        if self.central_transform == None or self.central_transform == "":
+            central_transform_name = "{}_{}_central_LOC".format(self.side, self.name)
+            name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
+        else:
+            central_transform_name = self.central_transform
+            name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
 
-        if not cmds.objExists(central_transform_name) or self.central_transform == None:
+        if not cmds.objExists(central_transform_name):
             loc = cmds.spaceLocator(name=central_transform_name)
             self.central_transform = loc[0]
 
@@ -342,6 +379,12 @@ class SpineLimb():
 
     def module_main_grp(self, list_objs):
         """
+        re-group all things related to the internal system of the module in one main group
+
+        Args:
+
+        Returns:
+
         """
         if cmds.objExists(self.main_grp):
             cmds.parent(list_objs, self.main_grp)
@@ -354,6 +397,12 @@ class SpineLimb():
 
     def run(self):
         """
+        run the module and get the final result
+
+        Args:
+
+        Returns:
+
         """
 
         print("###--- Module Spine --- START ---###")

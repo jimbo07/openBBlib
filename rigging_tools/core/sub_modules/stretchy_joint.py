@@ -29,13 +29,19 @@ class StretchyJoint():
                     numb_twist_jnt = 5, 
                     twist_start_up_vector = "",
                     twist_end_up_vector = "",
-                    start_up_vector = [0, 1, 0],
-                    start_world_up_vector = [0, 1, 0],
-                    end_up_vector = [0, 1, 0],
-                    end_world_up_vector = [0, 1, 0],
+                    start_axis_up_vector = [0, 1, 0],
+                    start_axis_world_up_vector = [0, 1, 0],
+                    end_axis_up_vector = [0, 1, 0],
+                    end_axis_world_up_vector = [0, 1, 0],
                     delete_main_trf = False
                 ):
         """
+        Constructor class
+
+        Args:
+
+        Returns:
+      
         """
         self.name = name
         self.start_trf = start_trf
@@ -48,10 +54,10 @@ class StretchyJoint():
         self.twist_start_up_vector = twist_start_up_vector
         self.twist_end_up_vector = twist_end_up_vector
 
-        self.start_up_vector = start_up_vector
-        self.start_world_up_vector = start_world_up_vector
-        self.end_up_vector = end_up_vector
-        self.end_world_up_vector = end_world_up_vector
+        self.start_axis_up_vector = start_axis_up_vector
+        self.start_axis_world_up_vector = start_axis_world_up_vector
+        self.end_axis_up_vector = end_axis_up_vector
+        self.end_axis_world_up_vector = end_axis_world_up_vector
 
         self.delete_main_trf = delete_main_trf
 
@@ -70,11 +76,17 @@ class StretchyJoint():
 
         self.main_grp = "{}_{}_stretchySystem_GRP".format(self.side, self.name)
 
-    def stretchy(self):
+    def stretchy_system(self):
         """
+        building up the stretchy system
+
+        Args:
+
+        Returns:
+      
         """
 
-        joint_chain = joints_utils.related_clean_joint_chain([self.start_trf, self.end_trf], self.side, self.name, True)
+        joint_chain = joints_utils.related_clean_joint_chain([self.start_trf, self.end_trf], self.side, self.name, False)
         self.start_jnt = joint_chain[0]
         self.end_jnt = joint_chain[1]
 
@@ -114,7 +126,15 @@ class StretchyJoint():
             transforms_utils.align_objs(self.up_trf, up_loc_offset_grp[0], True, False)
             transforms_utils.align_objs(self.start_jnt, up_loc_offset_grp[0], False, True)
 
-        cmds.parentConstraint(self.start_loc, up_loc_offset_grp[0], maintainOffset=True)
+        if self.delete_main_trf == False:
+            cmds.parentConstraint(self.start_trf, start_loc_offset_grp[0], maintainOffset=True)
+            cmds.parentConstraint(self.end_trf, end_loc_offset_grp[0], maintainOffset=True)
+            if self.up_trf == "" or self.up_trf == None:
+                cmds.parentConstraint(self.start_loc, up_loc_offset_grp[0], maintainOffset=True)
+            else:
+                cmds.parentConstraint(self.up_trf, up_loc_offset_grp[0], maintainOffset=True)
+        else:
+            cmds.parentConstraint(self.start_loc, up_loc_offset_grp[0], maintainOffset=True)
 
         self.module_stretchy_objs.extend([self.start_jnt, start_loc_offset_grp[0], end_loc_offset_grp[0], up_loc_offset_grp[0]])
 
@@ -165,6 +185,12 @@ class StretchyJoint():
 
     def twist_chain(self):
         """
+        building up a twist chain of joints between the start and the end joint of the stretchy system
+
+        Args:
+
+        Returns:
+
         """
         name_bit_twist_system = self.start_jnt[2 : len(self.start_jnt)-4]
         stretchy_twist = twist_chain.TwistChain(
@@ -175,10 +201,10 @@ class StretchyJoint():
                                                     self.numb_twist_jnt,
                                                     self.twist_start_up_vector,
                                                     self.twist_end_up_vector,
-                                                    start_up_vector,
-                                                    start_world_up_vector,
-                                                    end_up_vector,
-                                                    end_world_up_vector
+                                                    self.start_axis_up_vector,
+                                                    self.start_axis_world_up_vector,
+                                                    self.end_axis_up_vector,
+                                                    self.end_axis_world_up_vector
                                                 )
         stretchy_twist.run()
 
@@ -186,6 +212,12 @@ class StretchyJoint():
 
     def module_main_grp(self, list_objs):
         """
+        building up the main group for the sub-module which will contain all the parts built before
+
+        Args:
+
+        Returns:
+        
         """
         if cmds.objExists(self.main_grp):
             cmds.parent(list_objs, self.main_grp)
@@ -198,13 +230,19 @@ class StretchyJoint():
 
     def run(self):
         """
+        Method that run the entire more for building up it
+
+        Args:
+
+        Returns:
+      
         """
         if self.make_twist_chain:
             print("###--- Module StretchyJoint --- TwistChain --- START ---###")
         else:
             print("###--- Module StretchyJoint --- START ---###")
 
-        self.stretchy()
+        self.stretchy_system()
 
         if self.make_twist_chain:
             self.twist_chain()

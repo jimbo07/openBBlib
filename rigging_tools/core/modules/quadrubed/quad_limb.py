@@ -1,4 +1,4 @@
-from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils
+from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils, polevectors_utils
 from ...controls import controller
 from ...sub_modules import stretchy_joint, twist_chain
 
@@ -10,6 +10,7 @@ reload(dag_node)
 reload(transforms_utils)
 reload(stretchy_joint)
 reload(twist_chain)
+reload(polevectors_utils)
 
 try:
     from maya import cmds, mel
@@ -34,7 +35,7 @@ class QuadLimb():
                     heel_loc = "", 
                     inner_loc = "", 
                     outer_loc = "",
-                    make_twist_chain = False, 
+                    twist_chain = False, 
                     central_transform = None
                 ):
 
@@ -51,7 +52,7 @@ class QuadLimb():
         self.foot_chain = []
         
         self.scapula_joints = scapula_joints
-        self.make_twist_chain = make_twist_chain 
+        self.twist_chain = twist_chain 
 
         self.ankle_loc = ankle_loc
         self.ball_loc = ball_loc
@@ -69,7 +70,7 @@ class QuadLimb():
         self.poleVector_ctrl = None
         self.scapula_ctrl = None
 
-        self.reverse_foot_chain = None
+        self.scapula_ctrls_grp = None
 
         self.fk_system_objs = []
         self.ik_system_objs = []
@@ -80,10 +81,21 @@ class QuadLimb():
         self.ik_ctrls_main_grp = "{}_{}_ikControls_GRP".format(self.side, self.name)
         self.fk_ctrls_main_grp = "{}_{}_fkControls_GRP".format(self.side, self.name)
 
+        self.switch_ctrl = None
+        self.switch_ctrls_grp = ""
+
         self.main_grp = "{}_{}_system_GRP".format(self.side, self.name)
         
 
     def create_driver_joint_chain(self):
+        """
+        Creating the drive chain, the ultimate chain of joints that will guide the main skeleleton
+
+        Args:
+
+        Returns:
+
+        """
         self.driver_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "driver", True)
         return self.driver_chain
                    
@@ -122,7 +134,7 @@ class QuadLimb():
         cmds.setAttr("{}.visibility".format(grp_name[0]), 0)
         
         return [loc_name, grp_name[0]]
-
+    '''
     def no_flip_IK(self, pole_vector_offset_grp):
         """
         building up a system of transforms which helps the flipping issue of the ik systems
@@ -149,16 +161,16 @@ class QuadLimb():
         follow_pac = cmds.parentConstraint([no_flip_aiming_grp, self.world_space_loc[0]], pole_vector_offset_grp, maintainOffset=True)
 
         name_attr = "spaces"
-        cmds.addAttr(self.poleVector_ctrl, longName=name_attr, attributeType='enum', enumName="foot:world:")
-        cmds.setAttr("{}.{}".format(self.poleVector_ctrl, name_attr), keyable=True, lock=False)
+        cmds.addAttr(self.poleVector_ctrl.get_control(), longName=name_attr, attributeType='enum', enumName="foot:world:")
+        cmds.setAttr("{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), keyable=True, lock=False)
 
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W0".format(no_flip_aiming_grp), currentDriver="{}.{}".format(self.poleVector_ctrl, name_attr), driverValue=0, value=1.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W0".format(no_flip_aiming_grp), currentDriver="{}.{}".format(self.poleVector_ctrl, name_attr), driverValue=1, value=0.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl, name_attr), driverValue=0, value=0.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl, name_attr), driverValue=1, value=1.0)        
+        cmds.setDrivenKeyframe(follow_pac, attribute="{}W0".format(no_flip_aiming_grp), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=0, value=1.0)
+        cmds.setDrivenKeyframe(follow_pac, attribute="{}W0".format(no_flip_aiming_grp), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=1, value=0.0)
+        cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=0, value=0.0)
+        cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=1, value=1.0)        
 
         return [no_flip_offset_aiming_grp, no_flip_offset_pelvis_grp]
-
+    '''
     def fk_system(self):
         """
         building up the fk system
@@ -207,6 +219,12 @@ class QuadLimb():
 
     def roll_locs_hierarchy(self):
         """
+        creating the right hierarchy for dealing with the foot rolls
+
+        Args:
+
+        Returns:
+
         """
         rolls_grps = []
 
@@ -235,19 +253,16 @@ class QuadLimb():
 
     def foot_roll_system(self, rools_data):
         """
+        building up the foot rolls system
+
+        Args:
+
+        Returns:
+
         """
         # reversing the chain
         tmp_foot_chain = [self.main_chain[3], self.main_chain[4], self.main_chain[5]]
         self.foot_chain = joints_utils.related_clean_joint_chain(tmp_foot_chain, self.side, "footRoll", True)
-        '''
-        jnt_chain = []
-        joints_utils.get_joints_chain(self.foot_chain[0], jnt_chain)
-        cmds.parent(jnt_chain, world=True)
-        for i in range(len(self.foot_chain)-1, 0, -1):            
-            cmds.parent(self.foot_chain[i-1], self.foot_chain[i])
-        '''
-        # constraint the first joint of the reverse chain with the outerLoc, to get the side rolls
-        # cmds.parentConstraint(self.outer_loc, self.foot_chain[-1], maintainOffset=True)
 
         # ik handles
         ball_ik_handle = cmds.ikHandle(name="{}_{}_ballRoll_IKH".format(self.side, self.name), solver="ikSCsolver", startJoint=self.foot_chain[0], endEffector=self.foot_chain[1])
@@ -257,23 +272,23 @@ class QuadLimb():
 
 
         # foot rools attribute
-        attributes_utils.add_separator(self.main_ctrl, "footAttributes")
+        attributes_utils.add_separator(self.main_ctrl.get_control(), "footAttributes")
         ball_roll_attr = "ballRoll"
-        attributes_utils.add_float_attr(self.main_ctrl, ball_roll_attr)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), ball_roll_attr)
         tip_roll_attr = "tipRoll"
-        attributes_utils.add_float_attr(self.main_ctrl, tip_roll_attr)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), tip_roll_attr)
         inner_roll_attr = "innerSideRoll"
-        attributes_utils.add_float_attr(self.main_ctrl, inner_roll_attr)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), inner_roll_attr)
         outer_roll_attr = "outerSideRoll"
-        attributes_utils.add_float_attr(self.main_ctrl, outer_roll_attr)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), outer_roll_attr)
         heel_roll_attr = "heelRoll"
-        attributes_utils.add_float_attr(self.main_ctrl, heel_roll_attr)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), heel_roll_attr)
 
-        cmds.connectAttr("{}.{}".format(self.main_ctrl, ball_roll_attr), "{}.rotateX".format(self.ball_loc), force=True)
-        cmds.connectAttr("{}.{}".format(self.main_ctrl, tip_roll_attr), "{}.rotateX".format(self.tip_loc), force=True)
-        cmds.connectAttr("{}.{}".format(self.main_ctrl, inner_roll_attr), "{}.rotateZ".format(self.inner_loc), force=True)
-        cmds.connectAttr("{}.{}".format(self.main_ctrl, outer_roll_attr), "{}.rotateZ".format(self.outer_loc), force=True)
-        cmds.connectAttr("{}.{}".format(self.main_ctrl, heel_roll_attr), "{}.rotateX".format(self.heel_loc), force=True)
+        cmds.connectAttr("{}.{}".format(self.main_ctrl.get_control(), ball_roll_attr), "{}.rotateX".format(self.ball_loc), force=True)
+        cmds.connectAttr("{}.{}".format(self.main_ctrl.get_control(), tip_roll_attr), "{}.rotateX".format(self.tip_loc), force=True)
+        cmds.connectAttr("{}.{}".format(self.main_ctrl.get_control(), inner_roll_attr), "{}.rotateZ".format(self.inner_loc), force=True)
+        cmds.connectAttr("{}.{}".format(self.main_ctrl.get_control(), outer_roll_attr), "{}.rotateZ".format(self.outer_loc), force=True)
+        cmds.connectAttr("{}.{}".format(self.main_ctrl.get_control(), heel_roll_attr), "{}.rotateX".format(self.heel_loc), force=True)
 
         self.ik_system_objs.append(self.foot_chain[0])
 
@@ -300,28 +315,28 @@ class QuadLimb():
         self.ik_system_objs.extend([self.ik_spring_chain[0], self.ik_rotate_plane_chain[0]])
 
         # creating ctrl for shoulder/hip and his grps   ####  circleFourArrows  ####
-        ctrl = controller.Control("{}_start_ik".format(self.main_chain[0][:len(self.main_chain[0])-4]), 5.0, 'circleFourArrows', self.main_chain[0], self.main_chain[0], '', ['r', 's', 'v'], '', True, True, False)
-        self.start_ctrl = ctrl.get_control()
-        start_ctrl_offset_grp = ctrl.get_offset_grp()
-        driver_ctrls_offset_grp.append(start_ctrl_offset_grp)
+        self.start_ctrl = controller.Control("{}_start_ik".format(self.main_chain[0][:len(self.main_chain[0])-4]), 5.0, 'circleFourArrows', self.main_chain[0], "", '', ['r', 's', 'v'], '', True, True, False)
+        # self.start_ctrl = ctrl.get_control()
+        # start_ctrl_offset_grp = ctrl.get_offset_grp()
+        driver_ctrls_offset_grp.append(self.start_ctrl.get_offset_grp())
 
         # creating ctrls for ankle/wrist rotation/translation and his grps
-        ctrl = controller.Control("{}_end_ik".format(self.main_chain[3][:len(self.main_chain[3])-4]), 5.0, 'sphere', self.main_chain[3], self.main_chain[3], '', ['t', 's', 'v'], '', True, True, False)
-        self.end_ctrl = ctrl.get_control()
-        end_ctrl_offset_grp = ctrl.get_offset_grp()
-        driver_ctrls_offset_grp.append(end_ctrl_offset_grp)
+        self.end_ctrl = controller.Control("{}_end_ik".format(self.main_chain[3][:len(self.main_chain[3])-4]), 5.0, 'sphere', self.main_chain[3], self.main_chain[3], '', ['t', 's', 'v'], '', True, True, False)
+        # self.end_ctrl = ctrl.get_control()
+        # end_ctrl_offset_grp = ctrl.get_offset_grp()
+        driver_ctrls_offset_grp.append(self.end_ctrl.get_offset_grp())
 
-        ctrl = controller.Control("{}_main_ik".format(self.main_chain[3][:len(self.main_chain[3])-4]), 5.0, 'cube', '', '', '', ['s', 'v'], '', True, True, False)
-        ctrl.make_dynamic_pivot("{}_main_ik".format(self.main_chain[3][:len(self.main_chain[3])-4]), 2.5, ctrl.get_control(), ctrl.get_control())
-        self.main_ctrl = ctrl.get_control()
-        main_ctrl_offset_grp = ctrl.get_offset_grp()
-        driver_ctrls_offset_grp.append(main_ctrl_offset_grp)
+        self.main_ctrl = controller.Control("{}_main_ik".format(self.main_chain[3][:len(self.main_chain[3])-4]), 5.0, 'cube', '', '', '', ['s', 'v'], '', True, True, False)
+        self.main_ctrl.make_dynamic_pivot("{}_main_ik".format(self.main_chain[3][:len(self.main_chain[3])-4]), 2.5, self.main_ctrl.get_control(), self.main_ctrl.get_control())
+        # self.main_ctrl = ctrl.get_control()
+        # main_ctrl_offset_grp = ctrl.get_offset_grp()
+        driver_ctrls_offset_grp.append(self.main_ctrl.get_offset_grp())
 
-        transforms_utils.align_objs(self.main_chain[3], main_ctrl_offset_grp, True, False)
-        transforms_utils.align_objs(self.main_ctrl, rolls_locs_data_tmp[0][0][0], True, False)
+        transforms_utils.align_objs(self.main_chain[3], self.main_ctrl.get_offset_grp(), True, False)
+        transforms_utils.align_objs(self.main_ctrl.get_control(), rolls_locs_data_tmp[0][0][0], True, False)
 
         # the --- rolls_locs_data_tmp[0][2] --- is the heel offset group
-        cmds.parentConstraint(self.main_ctrl, rolls_locs_data_tmp[0][3][0], maintainOffset=True)
+        cmds.parentConstraint(self.main_ctrl.get_control(), rolls_locs_data_tmp[0][3][0], maintainOffset=True)
 
         # set-up a foot roll system
         self.foot_roll_system(rolls_locs_data_tmp)
@@ -369,64 +384,69 @@ class QuadLimb():
         self.ik_system_objs.append(ik_rotate_plane_handle[0])
 
         # adding hock attribute
-        attributes_utils.add_separator(self.main_ctrl, "hockAttributes")
+        attributes_utils.add_separator(self.main_ctrl.get_control(), "hockAttributes")
         name_attr = "hockFollow"
-        attributes_utils.add_float_attr(self.main_ctrl, name_attr, 0.0, 10.0, 5.0)
-        cmds.setDrivenKeyframe(aim_const, attribute="{}W0".format(aiming_grp_override_aim), currentDriver="{}.{}".format(self.main_ctrl, name_attr), driverValue=0.0, value=1.0)
-        cmds.setDrivenKeyframe(aim_const, attribute="{}W0".format(aiming_grp_override_aim), currentDriver="{}.{}".format(self.main_ctrl, name_attr), driverValue=10.0, value=0.0)
-        cmds.setDrivenKeyframe(aim_const, attribute="{}W1".format(self.ik_spring_chain[2]), currentDriver="{}.{}".format(self.main_ctrl, name_attr), driverValue=0.0, value=0.0)
-        cmds.setDrivenKeyframe(aim_const, attribute="{}W1".format(self.ik_spring_chain[2]), currentDriver="{}.{}".format(self.main_ctrl, name_attr), driverValue=10.0, value=1.0)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), name_attr, 0.0, 10.0, 5.0)
+        cmds.setDrivenKeyframe(aim_const, attribute="{}W0".format(aiming_grp_override_aim), currentDriver="{}.{}".format(self.main_ctrl.get_control(), name_attr), driverValue=0.0, value=1.0)
+        cmds.setDrivenKeyframe(aim_const, attribute="{}W0".format(aiming_grp_override_aim), currentDriver="{}.{}".format(self.main_ctrl.get_control(), name_attr), driverValue=10.0, value=0.0)
+        cmds.setDrivenKeyframe(aim_const, attribute="{}W1".format(self.ik_spring_chain[2]), currentDriver="{}.{}".format(self.main_ctrl.get_control(), name_attr), driverValue=0.0, value=0.0)
+        cmds.setDrivenKeyframe(aim_const, attribute="{}W1".format(self.ik_spring_chain[2]), currentDriver="{}.{}".format(self.main_ctrl.get_control(), name_attr), driverValue=10.0, value=1.0)
 
         # spring bias attributes
         name_attr = "hockUpAngle"
-        attributes_utils.add_float_attr(self.main_ctrl, name_attr, 0.0, 10.0, 5.0)
-        cmds.setDrivenKeyframe(ik_spring_handle[0], attribute="springAngleBias[0].springAngleBias_FloatValue", currentDriver="{}.{}".format(self.main_ctrl, name_attr), driverValue=0.0, value=0.0)
-        cmds.setDrivenKeyframe(ik_spring_handle[0], attribute="springAngleBias[0].springAngleBias_FloatValue", currentDriver="{}.{}".format(self.main_ctrl, name_attr), driverValue=10.0, value=1.0)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), name_attr, 0.0, 10.0, 5.0)
+        cmds.setDrivenKeyframe(ik_spring_handle[0], attribute="springAngleBias[0].springAngleBias_FloatValue", currentDriver="{}.{}".format(self.main_ctrl.get_control(), name_attr), driverValue=0.0, value=0.0)
+        cmds.setDrivenKeyframe(ik_spring_handle[0], attribute="springAngleBias[0].springAngleBias_FloatValue", currentDriver="{}.{}".format(self.main_ctrl.get_control(), name_attr), driverValue=10.0, value=1.0)
 
         name_attr = "hockBotAngle"
-        attributes_utils.add_float_attr(self.main_ctrl, name_attr, 0.0, 10.0, 5.0)
-        cmds.setDrivenKeyframe(ik_spring_handle[0], attribute="springAngleBias[1].springAngleBias_FloatValue", currentDriver="{}.{}".format(self.main_ctrl, name_attr), driverValue=0.0, value=0.0)
-        cmds.setDrivenKeyframe(ik_spring_handle[0], attribute="springAngleBias[1].springAngleBias_FloatValue", currentDriver="{}.{}".format(self.main_ctrl, name_attr), driverValue=10.0, value=1.0)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), name_attr, 0.0, 10.0, 5.0)
+        cmds.setDrivenKeyframe(ik_spring_handle[0], attribute="springAngleBias[1].springAngleBias_FloatValue", currentDriver="{}.{}".format(self.main_ctrl.get_control(), name_attr), driverValue=0.0, value=0.0)
+        cmds.setDrivenKeyframe(ik_spring_handle[0], attribute="springAngleBias[1].springAngleBias_FloatValue", currentDriver="{}.{}".format(self.main_ctrl.get_control(), name_attr), driverValue=10.0, value=1.0)
         
 
         # finalizing/constraint section
-        cmds.parentConstraint(aiming_grp_aim, end_ctrl_offset_grp, maintainOffset=True)
+        cmds.parentConstraint(aiming_grp_aim, self.end_ctrl.get_offset_grp(), maintainOffset=True)
 
-        cmds.parentConstraint(self.start_ctrl, self.ik_spring_chain[0], maintainOffset=True)
-        cmds.parentConstraint(self.start_ctrl, self.ik_rotate_plane_chain[0], maintainOffset=True)
+        cmds.parentConstraint(self.start_ctrl.get_control(), self.ik_spring_chain[0], maintainOffset=True)
+        cmds.parentConstraint(self.start_ctrl.get_control(), self.ik_rotate_plane_chain[0], maintainOffset=True)
 
-        cmds.parentConstraint(self.end_ctrl, ik_rotate_plane_handle[0], maintainOffset=True)
+        cmds.parentConstraint(self.end_ctrl.get_control(), ik_rotate_plane_handle[0], maintainOffset=True)
         cmds.parentConstraint(self.ankle_loc, ik_spring_handle[0], maintainOffset=True)
 
         cmds.orientConstraint(self.ankle_loc, self.ik_rotate_plane_chain[3], maintainOffset=True)
         cmds.aimConstraint(self.ankle_loc, self.ik_rotate_plane_chain[2], maintainOffset=True, worldUpType="objectrotation", worldUpVector=[0, 0, 1], worldUpObject=aim_up_vector)
 
         # building pole vector system
-        ik_spring_pv = self.create_locator_poleVector_system("{}_{}_ikSpring".format(self.side, self.name), self.ik_spring_chain[0], self.ik_spring_chain[1], self.ik_spring_chain[3])
-        ik_rotate_plane_pv = self.create_locator_poleVector_system("{}_{}_ikRotatePlane".format(self.side, self.name), self.ik_rotate_plane_chain[0], self.ik_rotate_plane_chain[1], self.ik_rotate_plane_chain[2])
+        ik_spring_pv = polevectors_utils.pole_vector_complex_plane("{}_{}_ikSpring".format(self.side, self.name), self.ik_spring_chain[0], self.ik_spring_chain[1], self.ik_spring_chain[3])
+        ik_rotate_plane_pv = polevectors_utils.pole_vector_complex_plane("{}_{}_ikRotatePlane".format(self.side, self.name), self.ik_rotate_plane_chain[0], self.ik_rotate_plane_chain[1], self.ik_rotate_plane_chain[2])
         
         cmds.poleVectorConstraint(ik_spring_pv[0], ik_spring_handle[0])
         cmds.poleVectorConstraint(ik_rotate_plane_pv[0], ik_rotate_plane_handle[0])
 
-        ctrl = controller.Control("{}_{}_poleVector_ik".format(self.side, self.name), 5.0, 'sphere', '', '', '', ['r', 's', 'v'], '', True, True, False)
+        self.poleVector_ctrl = controller.Control("{}_{}_poleVector_ik".format(self.side, self.name), 5.0, 'sphere', '', '', '', ['r', 's', 'v'], '', True, True, False)
 
-        self.poleVector_ctrl = ctrl.get_control()
-        main_pv_driver_off_grp = ctrl.get_offset_grp()
+        # self.poleVector_ctrl = ctrl.get_control()
+        # main_pv_driver_off_grp = ctrl.get_offset_grp()
         
-        driver_ctrls_offset_grp.append(main_pv_driver_off_grp)
+        driver_ctrls_offset_grp.append(self.poleVector_ctrl.get_offset_grp())
 
-        cmds.delete(cmds.parentConstraint([ik_spring_pv[0], ik_rotate_plane_pv[0]], main_pv_driver_off_grp, maintainOffset=False))
+        cmds.delete(cmds.pointConstraint([ik_spring_pv[0], ik_rotate_plane_pv[0]], self.poleVector_ctrl.get_offset_grp(), maintainOffset=False))
 
-        cmds.parent([ik_spring_pv[1], ik_rotate_plane_pv[1]], self.poleVector_ctrl)
+        cmds.parent([ik_spring_pv[1], ik_rotate_plane_pv[1]], self.poleVector_ctrl.get_control())
 
         # no flip Ik ---> pole vector system
-        no_flip_fix_grps = self.no_flip_IK(main_pv_driver_off_grp)
-        self.ik_system_objs.extend(no_flip_fix_grps)
+        # no_flip_fix_grps = self.no_flip_IK(self.poleVector_ctrl.get_offset_grp())
+        no_flip_fix_grps = polevectors_utils.no_flip_pole_vector(self.name, self.ik_rotate_plane_chain[0], self.main_ctrl.get_control(), self.root_jnt, self.poleVector_ctrl.get_control(), self.poleVector_ctrl.get_offset_grp(), [self.world_space_loc[0]], ["world"], self.side)
+        driver_ctrls_offset_grp.extend(no_flip_fix_grps)
 
         # parent constraint the foot part of the ik_rotate_plane_chain to the reverse chain
         cmds.parentConstraint(self.foot_chain[1], self.ik_rotate_plane_chain[4], maintainOffset=True)
         cmds.parentConstraint(self.foot_chain[2], self.ik_rotate_plane_chain[5], maintainOffset=True)
 
+        # adding the poleVector arrow
+        annotation = polevectors_utils.pole_vector_arrow(self.ik_rotate_plane_chain[1], self.poleVector_ctrl.get_control(), name="{}_{}_poleVector_ANT".format(self.side, self.name))
+        driver_ctrls_offset_grp.append(annotation)
+        
         # clean the scene
         self.ik_system_objs.append(self.ik_spring_chain[0])
         self.ik_system_objs.append(self.ik_rotate_plane_chain[0])
@@ -438,8 +458,8 @@ class QuadLimb():
 
         # TEMPORARY --- constraint start ctrl to his root
         name_attr = "spaces"
-        transforms_utils.make_spaces(self.start_ctrl, start_ctrl_offset_grp, name_attr, [self.world_space_loc[0], self.root_jnt], naming=["world", "root"])
-        cmds.setAttr("{}.{}".format(self.start_ctrl, name_attr), 1)
+        transforms_utils.make_spaces(self.start_ctrl.get_control(), self.start_ctrl.get_offset_grp(), name_attr, [self.world_space_loc[0], self.root_jnt], naming=["world", "root"])
+        cmds.setAttr("{}.{}".format(self.start_ctrl.get_control(), name_attr), 1)
 
         return True
 
@@ -453,37 +473,47 @@ class QuadLimb():
         else:
             scap_ik_single_chain = cmds.ikHandle(name="{}_{}_scapula_IKH".format(self.side, self.name), solver="ikSCsolver", startJoint=self.scapula_joints[0], endEffector=self.scapula_joints[1])    
             
-            ctrl = controller.Control("{}".format(self.scapula_joints[0][:len(self.scapula_joints[0])-5]), 5.0, 'sphere', self.scapula_joints[1], self.scapula_joints[1], '', ['r', 's', 'v'], '', True, True, False)
-            self.scapula_ctrl = ctrl.get_control()
+            self.scapula_ctrl = controller.Control("{}".format(self.scapula_joints[0][:len(self.scapula_joints[0])-5]), 5.0, 'sphere', "", "", '', ['r', 's', 'v'], '', True, True, False)
+            transforms_utils.align_objs(self.scapula_joints[1], self.scapula_ctrl.get_offset_grp())
 
             # cmds.parentConstraint(self.scapula_ctrl, scap_ik_single_chain[0], maintainOffset=True)
-            cmds.parent(scap_ik_single_chain[0], ctrl.get_control())
+            cmds.parent(scap_ik_single_chain[0], self.scapula_ctrl.get_control())
             cmds.setAttr("{}.visibility".format(scap_ik_single_chain[0]), 0)
 
-            pac_follow = cmds.parentConstraint([self.root_jnt, self.main_chain[0]], ctrl.get_offset_grp(), maintainOffset=True)
+            pac_follow = cmds.parentConstraint([self.root_jnt, self.main_chain[0]], self.scapula_ctrl.get_offset_grp(), maintainOffset=True)
 
             name_attr = "rootFatherFollow"
-            attributes_utils.add_float_attr(ctrl.get_control(), name_attr, 0.0, 10.0, 3.0)
-            cmds.setDrivenKeyframe(pac_follow, attribute="{}W0".format(self.root_jnt), currentDriver="{}.{}".format(self.scapula_ctrl, name_attr), driverValue=0.0, value=1.0)
-            cmds.setDrivenKeyframe(pac_follow, attribute="{}W0".format(self.root_jnt), currentDriver="{}.{}".format(self.scapula_ctrl, name_attr), driverValue=10.0, value=0.0)
-            cmds.setDrivenKeyframe(pac_follow, attribute="{}W1".format(self.main_chain[0]), currentDriver="{}.{}".format(self.scapula_ctrl, name_attr), driverValue=0.0, value=0.0)
-            cmds.setDrivenKeyframe(pac_follow, attribute="{}W1".format(self.main_chain[0]), currentDriver="{}.{}".format(self.scapula_ctrl, name_attr), driverValue=10.0, value=1.0)
+            attributes_utils.add_float_attr(self.scapula_ctrl.get_control(), name_attr, 0.0, 10.0, 3.0)
+            cmds.setDrivenKeyframe(pac_follow, attribute="{}W0".format(self.root_jnt), currentDriver="{}.{}".format(self.scapula_ctrl.get_control(), name_attr), driverValue=0.0, value=1.0)
+            cmds.setDrivenKeyframe(pac_follow, attribute="{}W0".format(self.root_jnt), currentDriver="{}.{}".format(self.scapula_ctrl.get_control(), name_attr), driverValue=10.0, value=0.0)
+            cmds.setDrivenKeyframe(pac_follow, attribute="{}W1".format(self.main_chain[0]), currentDriver="{}.{}".format(self.scapula_ctrl.get_control(), name_attr), driverValue=0.0, value=0.0)
+            cmds.setDrivenKeyframe(pac_follow, attribute="{}W1".format(self.main_chain[0]), currentDriver="{}.{}".format(self.scapula_ctrl.get_control(), name_attr), driverValue=10.0, value=1.0)
             # transforms_utils.make_spaces(self.scapula_ctrl, ctrl.get_offset_grp(), 'spaces', [self.world_space_loc, self.root_jnt, self.main_chain[0]], naming="world:root:father")
 
-            cmds.group(ctrl.get_offset_grp(), name="{}_{}_scapControls_GRP".format(self.side, self.name))
+            self.scapula_ctrls_grp = cmds.group(empty=True, name="{}_{}_scapControls_GRP".format(self.side, self.name))
+            cmds.parent(self.scapula_ctrl.get_offset_grp(), self.scapula_ctrls_grp)
             
         return True
 
     def chains_connection(self):
         """
         create the connections between the two systems (ik/fk) and driver with those two the final chain
+
+        Args:
+
+        Returns:
+
         """
         grp_objs = []
 
-        central_transform_name = "{}_{}_central_LOC".format(self.side, self.name)
-        name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
+        if self.central_transform == None or self.central_transform == "":
+            central_transform_name = "{}_{}_central_LOC".format(self.side, self.name)
+            name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
+        else:
+            central_transform_name = self.central_transform
+            name_attr = "{}_{}_switch_IK_FK".format(self.side, self.name)
 
-        if not cmds.objExists(central_transform_name) or self.central_transform == None:
+        if not cmds.objExists(central_transform_name):
             loc = cmds.spaceLocator(name=central_transform_name)
             self.central_transform = loc[0]
 
@@ -521,8 +551,14 @@ class QuadLimb():
 
         return True
 
-    def make_twist_chain_modules(self):
+    def twist_chain_modules(self):
         """
+        adding the twist chain feature calling back the sub-module
+
+        Args:
+
+        Returns:
+
         """
         # test with new twisty chain
         name_bit_twist_system = self.main_chain[0][2 : len(self.main_chain[0])-4]
@@ -577,6 +613,12 @@ class QuadLimb():
     
     def module_main_grp(self, list_objs):
         """
+        re-group all things related to the internal system of the module in one main group
+
+        Args:
+
+        Returns:
+
         """
         if cmds.objExists(self.main_grp):
             cmds.parent(list_objs, self.main_grp)
@@ -590,6 +632,11 @@ class QuadLimb():
     def run(self):
         """
         run the module and get the final result
+
+        Args:
+
+        Returns:
+
         """
 
         print("###--- Module QuadLimb --- START ---###")
@@ -612,8 +659,35 @@ class QuadLimb():
 
         self.scapula_system()
 
-        if self.make_twist_chain:
-            self.make_twist_chain_modules()
+        if self.twist_chain:
+            self.twist_chain_modules()
+
+        # Temporary switch control
+        self.switch_ctrl = controller.Control("{}_{}_switch".format(self.side, self.name), 3.0, 's', self.main_chain[-1], '', '', ['t', 'r', 's', 'v'], '', True, True, False)
+        cmds.parentConstraint(self.main_chain[-1], self.switch_ctrl.get_offset_grp(), maintainOffset=True)
+
+        switch_attr = "switch_IK_FK"
+        attributes_utils.add_enum_attr(self.switch_ctrl.get_control(), switch_attr, "IK:FK:")
+        cmds.connectAttr("{}.{}".format(self.switch_ctrl.get_control(), switch_attr), "{}.{}_{}_switch_IK_FK".format(self.central_transform, self.side, self.name), force=True)
+
+        self.switch_ctrls_grp = "switchIKFK_drivers_GRP"
+        if cmds.objExists(self.switch_ctrls_grp):
+            cmds.parent(self.switch_ctrl.get_offset_grp(), self.switch_ctrls_grp)
+        else:
+            cmds.group(empty=True, name=self.switch_ctrls_grp)
+            cmds.parent(self.switch_ctrl.get_offset_grp(), self.switch_ctrls_grp)
+
+        # Temporary stuff
+        if cmds.objExists("rig_GRP"):
+            cmds.parent(self.main_grp, "rig_GRP")
+
+        if cmds.objExists("controls_GRP"):
+            cmds.parent([self.ik_ctrls_main_grp, self.fk_ctrls_main_grp, self.switch_ctrls_grp], "controls_GRP")
+            if self.scapula_joints == [] or self.scapula_joints == None:
+                print "###--- No scapula system detected, parenting operation skipped ---###"
+            else:
+                cmds.parent(self.scapula_ctrls_grp, "controls_GRP")
+
 
     def get_name(self):
         """

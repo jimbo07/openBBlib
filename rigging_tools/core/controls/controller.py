@@ -21,7 +21,7 @@ class Control():
                     parent="",
                     lockChannels=["s", "v"],
                     newController = "",
-                    doModify=False,
+                    doModify=True,
                     doOffset=True,
                     doDynamicPivot=False,
                 ):
@@ -68,24 +68,37 @@ class Control():
                 ctrlObject = self.createCurve_pin(prefix + "_CTRL")
             elif shape == "cross":
                 ctrlObject = self.createCurve_cross(prefix + "_CTRL")
+            elif shape == "semicircle":
+                ctrlObject = self.createCurve_semicircle(prefix + "_CTRL")
+
+        self.Modify = None
+        self.Off = None
 
         if doModify:
             ctrlModify = cmds.group(n=prefix + "_modify_GRP", em=1)
+            self.Modify = ctrlModify
             cmds.parent(ctrlObject, ctrlModify)
 
         if doOffset:
             ctrlOffset = cmds.group(n=prefix + "_offset_GRP", em=1)
+            self.Off = ctrlOffset
             if doModify:
                 cmds.parent(ctrlModify, ctrlOffset)
             else:
                 cmds.parent(ctrlObject, ctrlOffset)
-                
+
+        # translate control
+        if translateTo != None and translateTo != "":
+            if cmds.objExists(translateTo):
+                transforms_utils.align_objs(translateTo, self.Off, True, False)
+
+        # rotate control
+        if rotateTo != None and rotateTo != "":
+            if cmds.objExists(rotateTo):
+                transforms_utils.align_objs(rotateTo, self.Off, False, True)
 
         self.newController = ctrlObject
 
-
-        
-        
         # color control
         ctrlShapes = cmds.listRelatives(ctrlObject, shapes=True)
         for ctrl_shape in ctrlShapes:
@@ -102,16 +115,6 @@ class Control():
             else:
                 #ctrl_shape.ovc.set(22)
                 cmds.setAttr("{}.overrideColor".format(ctrl_shape),22)
-
-        # translate control
-        if translateTo != None and translateTo != "":
-            if cmds.objExists(translateTo):
-                transforms_utils.align_objs(translateTo, ctrlOffset, True, False)
-
-        # rotate control
-        if rotateTo != None and rotateTo != "":
-            if cmds.objExists(rotateTo):
-                transforms_utils.align_objs(translateTo, ctrlOffset, False, True)
 
         # lock control channels
         singleAttributeLockList = []
@@ -132,8 +135,6 @@ class Control():
         # add public members
         self.scaleValue = scaleValue
         self.C = ctrlObject
-        self.Modify = None
-        self.Off = None
 
         if doOffset:
             self.Off = ctrlOffset
@@ -151,7 +152,13 @@ class Control():
 
             
             
-    def make_dynamic_pivot(self, prefix, scaleValue, translateTo, rotateTo):        
+    def make_dynamic_pivot(self, prefix, scaleValue, translateTo, rotateTo):
+        """
+        Args:
+
+        Returns:
+
+        """
         pivotCtrl = Control(prefix=prefix+"Pivot", scaleValue=scaleValue, translateTo=translateTo, rotateTo=rotateTo, parent=self.C,
                            shape="sphere", doOffset=True, doDynamicPivot=False)
         pivot_Name = str(pivotCtrl.get_control())
@@ -168,6 +175,12 @@ class Control():
             
             
     def get_control(self):
+        """
+        Args:
+
+        Returns:
+        
+        """
         return self.C
 
     def get_offset_grp(self):
@@ -204,7 +217,12 @@ class Control():
 
     def createCurve_circleFourArrows(self, name=""):
         """
-        Creates a nurbs curve in the shape of a circle with four arrows 
+        Creates a nurbs curve in the shape of a circle with four arrows
+        
+        Args:
+
+        Returns:
+        
         """
         startCurve1 = cmds.curve(d=3, p=[ (-0.448148, 0, -0.137417), (-0.425577, 0, -0.210319), (-0.345762, 0, -0.345408), (-0.210765, 0, -0.425313), (-0.138183, 0, -0.447335) ], k=[0, 0, 0, 1, 2, 2, 2])
         startCurve2 = cmds.curve(d=1, p=[(-0.138183, 0, -0.447335), (-0.138183, 0, -0.552734), (-0.276367, 0, -0.552734), (0, 0, -0.829101), (0.276367, 0, -0.552734), (0.138183, 0, -0.552734), (0.138183, 0, -0.447335) ], k=[0, 1, 2, 3, 4, 5, 6])
@@ -230,6 +248,11 @@ class Control():
     def createCurve_cube(self, name="cube_ctl"):
         """
         Creates a nurbs curve in the shape of a cube
+
+        Args:
+
+        Returns:
+
         """
         return(cmds.curve(name=name, d=1, p=[(-1, -1, 1), (1, -1, 1), (1, -1, -1), (-1, -1, -1), (-1, -1, 1), (-1, 1, 1), (-1, 1, -1), (-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1), (-1, 1, 1), (1, 1, 1), (1, 1, -1), (1, 1, 1), (1, -1, 1)], k=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]))
         
@@ -238,6 +261,11 @@ class Control():
     def createCurve_sphere(self, name="sphere_CTL"):
         """
         Creates a nurbs curve in the shape of a sphere
+
+        Args:
+
+        Returns:
+
         """
         circle1 = cmds.circle(nr=(1, 0, 0), n=name, ch=False)[0]
         circle2 = cmds.circle(nr=(0, 1, 0), n=name+"1", ch=False)[0]
@@ -254,6 +282,11 @@ class Control():
     def createCurve_locator(self, name="locator_ctl"):
         """
         Creates a nurbs curve in the shape of a locator
+
+        Args:
+
+        Returns:
+
         """
         return(cmds.curve(name=name, d=1, p=[(0, 1, 0), (0, -1, 0), (0, 0, 0), (-1, 0, 0), (1, 0, 0), (0, 0, 0), (0, 0, 1), (0, 0, -1)], k=[0, 1, 2, 3, 4, 5, 6, 7]))
 
@@ -261,6 +294,11 @@ class Control():
     def createCurve_circle(self, name="circle_ctl"):
         """
         Creates a nurbs curve in the shape of a circle
+
+        Args:
+
+        Returns:
+
         """
         return cmds.circle(n=name, nr=[1, 0, 0], ch=False)[0]
 
@@ -268,6 +306,11 @@ class Control():
     def createCurve_square(self, name="square_ctl"):
         """
         Creates a nurbs curve in the shape of a square
+
+        Args:
+
+        Returns:
+
         """
         return(cmds.curve(n=name, d=1, p=[(1, 0, 1), (-1, 0, 1), (-1, 0, -1), (1, 0, -1), (1, 0, 1)]))
 
@@ -275,6 +318,11 @@ class Control():
     def createCurve_triangle(self, name="triangle_ctl"):
         """
         Creates a nurbs curve in the shape of a triangle
+
+        Args:
+
+        Returns:
+
         """
         return(cmds.curve(n=name, d=1, p=[(0, 0, 0), (2, 0, 0), (0, 1, 0), (0, 0, 0)]))
 
@@ -282,6 +330,11 @@ class Control():
     def createCurve_s(self, name="s_ctl"):
         """
         Creates a nurbs curve in the shape of a S
+
+        Args:
+
+        Returns:
+
         """
         return(cmds.curve(n=name, d=True, p=[(-1, 0, -1), (-1.5, 0, -1), (-2, 0, -.5), (-2, 0, 0), (-2, 0, .5), (-1.5, 0, 1), (-1, 0, 1), (-.5, 0, 1), (0, 0, .5), (0, 0, 0), (0, 0, -.5), (.5, 0, -1), (1, 0, -1), (1.5, 0, -1), (2, 0, -.5), (2, 0, 0), (2, 0, .5), (1.5, 0, 1), (1, 0, 1)]))
 
@@ -289,14 +342,36 @@ class Control():
     def createCurve_pin(self, name="pin_ctl"):
         """
         Creates a nurbs curve in the shape of a pin
+
+        Args:
+
+        Returns:
+
         """
         return(cmds.curve(n=name, d=True, p=[(0, 0, 0), (0, 0.8, 0), (0, 1, 0.2), (0, 1.2, 0), (0, 1, -0.2), (0, 0.8, 0), (-0.2, 1, 0), (0, 1.2, 0), (0.2, 1, 0), (0, 0.8, 0)]))         
         
     def createCurve_cross(self, name="cross"):
         """
         Creates a nurbs curve in the shape of a pin
+
+        Args:
+
+        Returns:
+        
         """
         return(cmds.curve(n=name, d=True, p=[(1, 0, 1),(3, 0, 1), (3, 0, -1), (1, 0, -1), (1, 0, -3), (-1, 0, -3), (-1, 0, -1), (-3, 0, -1), (-3, 0, 1), (-1, 0, 1), (-1, 0, 3), (1, 0, 3), (1, 0, 1)]))                 
+
+    def createCurve_semicircle(self, name="semicircle"):
+        """
+        Creates a nurbs curve in the shape of a semicircle
+
+        Args:
+
+        Returns:
+        
+        """
+        return(cmds.curve(n=name, d=3, p=[(-3, 0, 0), (-3, 0, 3), (0, 0, 6), (3, 0, 3), (3, 0, 0)]))                 
+
 
     def add_attrib(self, ctrlName, longname = "", type = "", dv = 0, keyable=True):
         cmds.addAttr(ctrlName, ln=longname, at=type, dv=dv)
