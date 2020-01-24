@@ -149,3 +149,5 @@ class TwistChain():
             cmds.parent(self.main_grp, master_grp)
             if cmds.objExists("rig_GRP"):
                 cmds.parent(master_grp, "rig_GRP")
+        
+        return self.twist_joitns_chain
