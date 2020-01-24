@@ -24,6 +24,9 @@ class StretchyJoint():
                     start_trf, 
                     end_trf, 
                     up_trf = "", 
+                    start_driver = "", 
+                    end_driver = "", 
+                    up_driver = "",
                     side = "C", 
                     make_twist_chain = False, 
                     numb_twist_jnt = 5, 
@@ -47,6 +50,9 @@ class StretchyJoint():
         self.start_trf = start_trf
         self.end_trf = end_trf
         self.up_trf = up_trf
+        self.start_driver = start_driver
+        self.end_driver = end_driver
+        self.up_driver = up_driver
         self.side = side
         self.make_twist_chain = make_twist_chain
         self.numb_twist_jnt = numb_twist_jnt
@@ -125,17 +131,27 @@ class StretchyJoint():
             up_loc_offset_grp = transforms_utils.offset_grps_hierarchy(self.up_loc[0])
             transforms_utils.align_objs(self.up_trf, up_loc_offset_grp[0], True, False)
             transforms_utils.align_objs(self.start_jnt, up_loc_offset_grp[0], False, True)
-
-        if self.delete_main_trf == False:
+        
+        #Driver connection
+        if self.start_driver:
+            cmds.parentConstraint(self.start_driver, start_loc_offset_grp[0], maintainOffset=True)
+        else:
             cmds.parentConstraint(self.start_trf, start_loc_offset_grp[0], maintainOffset=True)
+            
+        if self.end_driver:
+            cmds.parentConstraint(self.end_driver, end_loc_offset_grp[0], maintainOffset=True)
+        else:
             cmds.parentConstraint(self.end_trf, end_loc_offset_grp[0], maintainOffset=True)
+
+        if self.up_driver:
+            cmds.parentConstraint(self.up_driver, up_loc_offset_grp[0], maintainOffset=True)
+        else:
             if self.up_trf == "" or self.up_trf == None:
                 cmds.parentConstraint(self.start_loc, up_loc_offset_grp[0], maintainOffset=True)
             else:
                 cmds.parentConstraint(self.up_trf, up_loc_offset_grp[0], maintainOffset=True)
-        else:
-            cmds.parentConstraint(self.start_loc, up_loc_offset_grp[0], maintainOffset=True)
 
+        
         self.module_stretchy_objs.extend([self.start_jnt, start_loc_offset_grp[0], end_loc_offset_grp[0], up_loc_offset_grp[0]])
 
         # building Ik system
@@ -254,9 +270,14 @@ class StretchyJoint():
             cmds.parent(self.main_grp, master_grp)
         else:
             cmds.parent(self.main_grp, master_grp)
+        
+        try:
+            if cmds.objExists("rig_GRP"):
+                cmds.parent(master_grp, "rig_GRP")
+        except:
+            print "{} already child of rig_GRP".format(master_grp)
 
-        if cmds.objExists("rig_GRP"):
-            cmds.parent(master_grp, "rig_GRP")
+        return [self.start_jnt, self.end_jnt]
 
     def get_name(self):
         """
