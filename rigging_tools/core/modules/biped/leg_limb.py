@@ -1,4 +1,4 @@
-from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils, polevectors_utils
+from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils, polevectors_utils, vectors_utils
 from ...controls import controller
 from ...sub_modules import stretchy_joint, twist_chain
 
@@ -11,6 +11,7 @@ reload(transforms_utils)
 reload(stretchy_joint)
 reload(twist_chain)
 reload(polevectors_utils)
+reload(vectors_utils)
 
 try:
     from maya import cmds, mel
@@ -65,7 +66,7 @@ class LegLimb():
         self.ik_chain = []
         self.foot_chain = []
 
-        self.start_ctrl = None    
+        self.hip_loc = None    
         self.main_ctrl = None
         self.poleVector_ctrl = None
 
@@ -191,14 +192,15 @@ class LegLimb():
                 break
             ctrl = None
             if i != 0:
-                ctrl = controller.Control("{}".format(jnt[:len(jnt)-4]), 5.0, 'circle', jnt, jnt, driver_ctrls[i-1], ['s', 'v'], '', True, True, False)
+                ctrl = controller.Control("{}".format(jnt[:len(jnt)-4]), 5.0, 'circle', jnt, jnt, driver_ctrls[i-1], ['v'], '', True, True, False)
             else:
-                ctrl = controller.Control("{}".format(jnt[:len(jnt)-4]), 5.0, 'circle', jnt, jnt, '', ['s', 'v'], '', True, True, False)
+                ctrl = controller.Control("{}".format(jnt[:len(jnt)-4]), 5.0, 'circle', jnt, jnt, '', ['v'], '', True, True, False)
             driver_ctrls.append(ctrl.get_control())
             driver_ctrls_offset_grp.append(ctrl.get_offset_grp())
             
             cmds.parentConstraint(ctrl.get_control(), jnt, maintainOffset=True)
-            
+            cmds.scaleConstraint(ctrl.get_control(), jnt, maintainOffset=True)
+
         # clean scene
         # grp_objs.append(driver_ctrls_offset_grp[0])
         # grp_objs.append(self.fk_chain[0])
@@ -311,8 +313,12 @@ class LegLimb():
         self.ik_system_objs.append(self.ik_chain[0])
 
         # creating ctrl for shoulder/hip and his grps   ####  circleFourArrows  ####
-        self.start_ctrl = controller.Control("{}_start_ik".format(self.main_chain[0][:len(self.main_chain[0])-4]), 5.0, 'circleFourArrows', self.main_chain[0], self.main_chain[0], '', ['r', 's', 'v'], '', True, True, False)
-        driver_ctrls_offset_grp.append(self.start_ctrl.get_offset_grp())
+        self.hip_loc = cmds.spaceLocator(name="{}_{}_hipPosition_LOC".format(self.side, self.name))
+        transforms_utils.align_objs(self.main_chain[0],  self.hip_loc)
+        self.ik_system_objs.append(self.hip_loc[0])
+
+        # self.start_ctrl = controller.Control("{}_start_ik".format(self.main_chain[0][:len(self.main_chain[0])-4]), 5.0, 'circleFourArrows', self.main_chain[0], self.main_chain[0], '', ['r', 's', 'v'], '', True, True, False)
+        # driver_ctrls_offset_grp.append(self.start_ctrl.get_offset_grp())
 
         self.main_ctrl = controller.Control("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 5.0, 'cube', self.main_chain[2], '', '', ['s', 'v'], '', True, True, False)
         self.main_ctrl.make_dynamic_pivot("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 2.5, self.main_ctrl.get_control(), self.main_ctrl.get_control())
@@ -322,6 +328,7 @@ class LegLimb():
 
         # the --- rolls_locs_data_tmp[0][2] --- is the heel offset group
         cmds.parentConstraint(self.main_ctrl.get_control(), rolls_locs_data_tmp[0][3][0], maintainOffset=True)
+        # cmds.scaleConstraint(self.main_ctrl.get_control(), self.ik_chain[2], maintainOffset=True)
 
         # set-up a foot roll system
         self.foot_roll_system(rolls_locs_data_tmp)
@@ -331,7 +338,7 @@ class LegLimb():
 
         self.ik_system_objs.append(ik_rotate_plane_handle[0])
 
-        cmds.parentConstraint(self.start_ctrl.get_control(), self.ik_chain[0], maintainOffset=True)
+        cmds.parentConstraint(self.hip_loc[0], self.ik_chain[0], maintainOffset=True)
 
         cmds.parentConstraint(self.ankle_loc, ik_rotate_plane_handle[0], maintainOffset=True)
         # cmds.parentConstraint(self.ankle_loc, ik_spring_handle[0], maintainOffset=True)
@@ -369,17 +376,97 @@ class LegLimb():
         # self.ik_system_objs.append(self.ik_spring_chain[0])
         self.ik_system_objs.append(self.ik_chain[0])
         
-        self.ik_system_grp = cmds.group(self.ik_system_objs, name="{}_{}_ikSystem_GRP".format(self.side, self.name))
-        cmds.group(driver_ctrls_offset_grp, name=self.ik_ctrls_main_grp)
+        self.ik_system_grp = cmds.group(empty=True, name="{}_{}_ikSystem_GRP".format(self.side, self.name))
+        cmds.parent(self.ik_system_objs, self.ik_system_grp)
+        cmds.group(empty=True, name=self.ik_ctrls_main_grp)
+        cmds.parent(driver_ctrls_offset_grp, self.ik_ctrls_main_grp)
 
         self.module_main_grp(self.ik_system_grp)        
 
-        # TEMPORARY --- constraint start ctrl to his root
+        # TEMPORARY --- constraint start loc to his root
         name_attr = "spaces"
-        transforms_utils.make_spaces(self.start_ctrl.get_control(), self.start_ctrl.get_offset_grp(), name_attr, [self.world_space_loc[0], self.root_jnt], naming=["world", "root"])
-        cmds.setAttr("{}.{}".format(self.start_ctrl.get_control(), name_attr), 1)
+        transforms_utils.make_spaces(self.hip_loc[0], self.hip_loc[0], name_attr, [self.world_space_loc[0], self.root_jnt], naming=["world", "root"])
+        cmds.setAttr("{}.{}".format(self.hip_loc[0], name_attr), 1)
         
         return True
+
+    def ik_stretch_update(self):
+        """
+        """
+
+        module_scale_attr = "moduleScale"
+        attributes_utils.add_vector_attr(self.central_transform, module_scale_attr, keyable=True, lock=False)
+        cmds.setAttr("{}.{}X".format(self.central_transform, module_scale_attr), 1)
+        cmds.setAttr("{}.{}Y".format(self.central_transform, module_scale_attr), 1)
+        cmds.setAttr("{}.{}Z".format(self.central_transform, module_scale_attr), 1)
+
+        stretch_attr = "stretchyLeg"
+        attributes_utils.add_separator(self.main_ctrl.get_control(), name_sep="stretchyAttribute", by_name=False)
+        attributes_utils.add_float_attr(self.main_ctrl.get_control(), stretch_attr, 0, 1, 0, keyable=True, lock=False)
+
+        start_loc = cmds.spaceLocator(name="{}_{}_startStretch_LOC".format(self.side, self.name))
+        end_loc = cmds.spaceLocator(name="{}_{}_endStretch_LOC".format(self.side, self.name))
+
+        cmds.parentConstraint(self.hip_loc, start_loc, maintainOffset=False)
+        cmds.parentConstraint(self.main_ctrl.get_control(), end_loc, maintainOffset=False)
+
+        hip = OM.MVector(cmds.xform(self.main_chain[0], q=True, ws=True, t=True))
+        knee = OM.MVector(cmds.xform(self.main_chain[1], q=True, ws=True, t=True))
+        ankle = OM.MVector(cmds.xform(self.main_chain[2], q=True, ws=True, t=True))
+
+        hip_knee_dist = vectors_utils.distance_between(hip, knee)
+        knee_ankle_dist = vectors_utils.distance_between(knee, ankle)
+
+        max_dist = hip_knee_dist + knee_ankle_dist
+
+        dist_between_node = cmds.createNode("distanceBetween", name="{}_{}_stretchUpdate_DSB")
+        cmds.connectAttr("{}.worldMatrix[0]".format(start_loc[0]), "{}.inMatrix1".format(dist_between_node), force=True)
+        cmds.connectAttr("{}.worldMatrix[0]".format(end_loc[0]), "{}.inMatrix2".format(dist_between_node), force=True)
+
+        scale_compensate_max_dist_node = cmds.createNode("multiplyDivide", name="{}_{}_normalizeMaxDist_stretchUpdate_MLD".format(self.side, self.name))
+        normalize_dist_node = cmds.createNode("multiplyDivide", name="{}_{}_stretchUpdate_MLD".format(self.side, self.name))
+        cmds.setAttr("{}.operation".format(normalize_dist_node), 2)
+        scale_compensate_dist_node = cmds.createNode("multiplyDivide", name="{}_{}_normalizeDist_stretchUpdate_MLD".format(self.side, self.name))
+        stretch_condition_node = cmds.createNode("condition", name="{}_{}_stretchUpdate_CND".format(self.side, self.name))
+        cmds.setAttr("{}.operation".format(stretch_condition_node), 2)
+        stretch_blend_node = cmds.createNode("blendColors", name="{}_{}_stretchUpdate_BLC".format(self.side, self.name))
+
+        # scale compensate multiply divide connection attributes
+        cmds.setAttr("{}.input1X".format(scale_compensate_max_dist_node), max_dist)
+        cmds.connectAttr("{}.{}X".format(self.central_transform, module_scale_attr), "{}.input2X".format(scale_compensate_max_dist_node), force=True)
+
+        # stretch update connection attribute
+        cmds.connectAttr("{}.distance".format(dist_between_node), "{}.input1X".format(normalize_dist_node), force=True)
+        cmds.connectAttr("{}.outputX".format(scale_compensate_max_dist_node), "{}.input2X".format(normalize_dist_node), force=True)
+
+        # scale compensate distance node conenction attribute
+        cmds.connectAttr("{}.{}X".format(self.central_transform, module_scale_attr), "{}.input2X".format(scale_compensate_dist_node), force=True)
+        cmds.connectAttr("{}.outputX".format(normalize_dist_node), "{}.input1X".format(scale_compensate_dist_node), force=True)
+
+        # condition node connection attribute
+        cmds.connectAttr("{}.outputX".format(normalize_dist_node), "{}.firstTerm".format(stretch_condition_node), force=True)
+        cmds.setAttr("{}.secondTerm".format(stretch_condition_node), 1.0)
+        cmds.connectAttr("{}.{}X".format(self.central_transform, module_scale_attr), "{}.colorIfFalseR".format(stretch_condition_node), force=True)
+        cmds.connectAttr("{}.outputX".format(scale_compensate_dist_node), "{}.colorIfTrueR".format(stretch_condition_node), force=True)
+
+        # connection scale to blend node
+        cmds.connectAttr("{}.{}".format(self.main_ctrl.get_control(), stretch_attr), "{}.blender".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.outColorR".format(stretch_condition_node), "{}.color1R".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}Y".format(self.central_transform, module_scale_attr), "{}.color1G".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}Z".format(self.central_transform, module_scale_attr), "{}.color1B".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}X".format(self.central_transform, module_scale_attr), "{}.color2R".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}Y".format(self.central_transform, module_scale_attr), "{}.color2G".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}Z".format(self.central_transform, module_scale_attr), "{}.color2B".format(stretch_blend_node), force=True)
+
+        # connection between blend node and the IK chain
+        cmds.connectAttr("{}.outputR".format(stretch_blend_node), "{}.scaleX".format(self.ik_chain[0]), force=True)
+        cmds.connectAttr("{}.outputR".format(stretch_blend_node), "{}.scaleX".format(self.ik_chain[1]), force=True)
+        cmds.connectAttr("{}.outputG".format(stretch_blend_node), "{}.scaleY".format(self.ik_chain[0]), force=True)
+        cmds.connectAttr("{}.outputG".format(stretch_blend_node), "{}.scaleY".format(self.ik_chain[1]), force=True)
+        cmds.connectAttr("{}.outputB".format(stretch_blend_node), "{}.scaleZ".format(self.ik_chain[0]), force=True)
+        cmds.connectAttr("{}.outputB".format(stretch_blend_node), "{}.scaleZ".format(self.ik_chain[1]), force=True)
+
+        return [start_loc[0], end_loc[0]]
 
     def chains_connection(self):
         """
@@ -403,29 +490,41 @@ class LegLimb():
             loc = cmds.spaceLocator(name=central_transform_name)
             self.central_transform = loc[0]
 
-            cmds.addAttr(self.central_transform, longName=name_attr, attributeType='enum', enumName="IK:FK:")
-            cmds.setAttr("{}.{}".format(self.central_transform, name_attr), keyable=True, lock=False)
+            attributes_utils.add_float_attr(self.central_transform, name_attr, 0, 1, 0, keyable=True, lock=False)
         
         elif cmds.objExists("{}.{}".format(self.central_transform, name_attr)):
             print "central_transform already present"
         
         else:
-            cmds.addAttr(self.central_transform, longName=name_attr, attributeType='enum', enumName="IK:FK:")
-            cmds.setAttr("{}.{}".format(self.central_transform, name_attr), keyable=True, lock=False)
+            attributes_utils.add_float_attr(self.central_transform, name_attr, 0, 1, 0, keyable=True, lock=False)
 
 
         for i, jnt in enumerate(self.main_chain):
             driver_pac = cmds.parentConstraint([self.fk_chain[i], self.ik_chain[i]], self.driver_chain[i], maintainOffset=True)
+            cmds.setAttr("{}.interpType".format(driver_pac[0]), 2)
+
+            driver_scale_blnd_node = cmds.createNode("blendColors", name="{}_{}_scaleDriverJNT_{}_BLC".format(self.side, self.name, i))
+            cmds.connectAttr("{}.{}".format(self.central_transform, name_attr), "{}.blender".format(driver_scale_blnd_node), force=True)
+            for channel in [["X", "R"], ["Y", "G"], ["Z", "B"]]:
+                cmds.connectAttr("{}.scale{}".format(self.ik_chain[i], channel[0]), "{}.color2{}".format(driver_scale_blnd_node, channel[1]), force=True)
+                cmds.connectAttr("{}.scale{}".format(self.fk_chain[i], channel[0]), "{}.color1{}".format(driver_scale_blnd_node, channel[1]), force=True)
+                cmds.connectAttr("{}.output{}".format(driver_scale_blnd_node, channel[1]), "{}.scale{}".format(self.driver_chain[i], channel[0]), force=True)
+                cmds.connectAttr("{}.scale{}".format(self.driver_chain[i], channel[0]), "{}.scale{}".format(jnt, channel[0]), force=True)
 
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W0".format(self.fk_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=0.0)
-            cmds.setDrivenKeyframe(driver_pac, attribute="{}W0".format(self.fk_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=1.0)
+            cmds.setDrivenKeyframe(driver_pac, attribute="{}W0".format(self.fk_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1.0, value=1.0)
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W1".format(self.ik_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=1.0)
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W1".format(self.ik_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=0.0)
 
-            cmds.setDrivenKeyframe(self.ik_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0, value=1)
-            cmds.setDrivenKeyframe(self.ik_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=0)
-            cmds.setDrivenKeyframe(self.fk_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0, value=0)
-            cmds.setDrivenKeyframe(self.fk_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=1)
+            # cmds.setDrivenKeyframe(driver_scc, attribute="{}W0".format(self.fk_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=0.0)
+            # cmds.setDrivenKeyframe(driver_scc, attribute="{}W0".format(self.fk_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1.0, value=1.0)
+            # cmds.setDrivenKeyframe(driver_scc, attribute="{}W1".format(self.ik_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=1.0)
+            # cmds.setDrivenKeyframe(driver_scc, attribute="{}W1".format(self.ik_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1.0, value=0.0)
+
+            cmds.setDrivenKeyframe(self.ik_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=1)
+            cmds.setDrivenKeyframe(self.ik_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1.0, value=0)
+            cmds.setDrivenKeyframe(self.fk_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=0)
+            cmds.setDrivenKeyframe(self.fk_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1.0, value=1)
 
             main_pac = cmds.parentConstraint(self.driver_chain[i], jnt, maintainOffset=True)
 
@@ -461,7 +560,17 @@ class LegLimb():
                                                     [0, 1, 0],
                                                     [0, 1, 0]
                                                 )
-        upperLeg_twist.run()
+        upper_twist_jnt_chain = upperLeg_twist.run()
+
+        for jnt in upper_twist_jnt_chain:
+            if cmds.objExists("{}.moduleScaleY".format(self.central_transform)):
+                cmds.connectAttr("{}.moduleScaleY".format(self.central_transform), "{}.scaleY".format(jnt), force=True)
+            else:
+                print "scale Y on twist chain skipped"
+            if cmds.objExists("{}.moduleScaleZ".format(self.central_transform)):
+                cmds.connectAttr("{}.moduleScaleZ".format(self.central_transform), "{}.scaleZ".format(jnt), force=True)
+            else:
+                print "scale Z on twist chain skipped"
 
         name_bit_twist_system = self.main_chain[1][2 : len(self.main_chain[1])-4]
         lowerLeg_twist = twist_chain.TwistChain(
@@ -477,7 +586,17 @@ class LegLimb():
                                                     [0, 1, 0],
                                                     [0, 1, 0]
                                                 )
-        lowerLeg_twist.run()
+        lower_twist_jnt_chain = lowerLeg_twist.run()
+
+        for jnt in lower_twist_jnt_chain:
+            if cmds.objExists("{}.moduleScaleY".format(self.central_transform)):
+                cmds.connectAttr("{}.moduleScaleY".format(self.central_transform), "{}.scaleY".format(jnt), force=True)
+            else:
+                print "scale Y on twist chain skipped"
+            if cmds.objExists("{}.moduleScaleZ".format(self.central_transform)):
+                cmds.connectAttr("{}.moduleScaleZ".format(self.central_transform), "{}.scaleZ".format(jnt), force=True)
+            else:
+                print "scale Z on twist chain skipped"
 
         return True
     
@@ -527,6 +646,10 @@ class LegLimb():
 
         self.chains_connection()
 
+        # ik stretchy update
+        stretch_update = self.ik_stretch_update()
+        cmds.parent(stretch_update, self.ik_system_grp)
+
         if self.twist_chain:
             self.twist_chain_modules()
 
@@ -535,7 +658,7 @@ class LegLimb():
         cmds.parentConstraint(self.main_chain[-1], self.switch_ctrl.get_offset_grp(), maintainOffset=True)
 
         switch_attr = "switch_IK_FK"
-        attributes_utils.add_enum_attr(self.switch_ctrl.get_control(), switch_attr, "IK:FK:")
+        attributes_utils.add_float_attr(self.switch_ctrl.get_control(), switch_attr, 0, 1, 0, keyable=True, lock=False)
         cmds.connectAttr("{}.{}".format(self.switch_ctrl.get_control(), switch_attr), "{}.{}_{}_switch_IK_FK".format(self.central_transform, self.side, self.name), force=True)
 
         self.switch_ctrls_grp = "switchIKFK_drivers_GRP"
