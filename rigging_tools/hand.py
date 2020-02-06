@@ -65,8 +65,6 @@ class Hand():
             print "#### ---- One or more than one meta_jnts joint not provided. Module skipped!!! ---- ####"
         else:
 
-            # pprint.pprint(self.meta_jnts_relatives)
-
             for i, key in enumerate(self.meta_jnts_relatives): 
                 tmp_relatives = cmds.listRelatives(self.meta_jnts_relatives[key]['jnt_name'], children=True)
                 tmp_joints = []
@@ -76,7 +74,6 @@ class Hand():
                         meta_jnts_children_pos.append(cmds.xform(obj, worldSpace=True, query=True, translation=True))
                 self.meta_jnts_relatives[key]['list_children'] = tmp_joints
 
-            # pprint.pprint(self.meta_jnts_relatives)
 
             crv = cmds.curve(point = meta_jnts_children_pos, degree=3)
             cup_driver_crv = cmds.rename(crv, "{}_{}_nucklesDriver_CRV".format(self.side, self.name))
@@ -107,6 +104,9 @@ class Hand():
 
                 # do aiming between the driver locator and the meta_jnt joint
                 cmds.aimConstraint(driver_loc[0], self.meta_jnts_relatives[key]["jnt_name"], maintainOffset=True, worldUpType="objectrotation", worldUpVector=[0, 1, 0], worldUpObject=driver_loc[0])
+                # scale fix
+                for axis in ["X", "Y", "Z"]:
+                    cmds.connectAttr("{}.scale{}".format(self.root_trf, axis), "{}.scale{}".format(self.meta_jnts_relatives[key]["jnt_name"], axis), force=True)
 
                 if i == 0:
                     joint_cup_end = cmds.createNode("joint", name="{}_{}_jointCup_endDriver_JNT".format(self.side, self.name))
@@ -140,16 +140,20 @@ class Hand():
                 else:
                     cmds.aimConstraint(locator_drivers[i+1], locator_drivers[i], maintainOffset=True, worldUpType="objectrotation", worldUpVector=[0, 1, 0], worldUpObject=self.root_trf)
 
-            cmds.parentConstraint(self.root_trf, self.start_cup_ctrl.get_offset_grp(), maintainOffset=True)
-            cmds.parentConstraint(self.root_trf, self.end_cup_ctrl.get_offset_grp(), maintainOffset=True)
 
             self.module_main_grp([drivers_grp])
             
             # cleaning up teh scene
             if cmds.objExists(self.controls_grp):
+                cmds.parentConstraint(self.root_trf, self.controls_grp, maintainOffset=False)
+                for axis in ["X", "Y", "Z"]:
+                    cmds.connectAttr("{}.scale{}".format(self.root_trf, axis), "{}.scale{}".format(self.controls_grp, axis), force=True)
                 cmds.parent([self.end_cup_ctrl.get_offset_grp(), self.start_cup_ctrl.get_offset_grp()], self.controls_grp)
             else:
                 cmds.group(empty=True, name=self.controls_grp)
+                cmds.parentConstraint(self.root_trf, self.controls_grp, maintainOffset=False)
+                for axis in ["X", "Y", "Z"]:
+                    cmds.connectAttr("{}.scale{}".format(self.root_trf, axis), "{}.scale{}".format(self.controls_grp, axis), force=True)
                 cmds.parent([self.end_cup_ctrl.get_offset_grp(), self.start_cup_ctrl.get_offset_grp()], self.controls_grp)
 
     def module_main_grp(self, list_objs):
