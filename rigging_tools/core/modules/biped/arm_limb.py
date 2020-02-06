@@ -28,10 +28,10 @@ class ArmLimb():
                     main_chain,
                     root_jnt,
                     clavicle_jnt,
-                    pelvis_ctrl = "",
                     side = "C", 
                     twist_chain = False, 
-                    central_transform = None
+                    central_transform = None,
+                    base_control = "baseOffset_CTRL"
                 ):
         """
         Class Constructor
@@ -45,7 +45,7 @@ class ArmLimb():
         self.main_chain = main_chain
         self.root_jnt = root_jnt
         self.clavicle_jnt = clavicle_jnt
-        self.pelvis_ctrl = pelvis_ctrl,
+        self.base_control = base_control
         self.side = side
         self.twist_chain = twist_chain 
         self.central_transform = central_transform
@@ -88,41 +88,6 @@ class ArmLimb():
         self.driver_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "driver", True)
         return self.driver_chain
 
-    def no_flip_IK(self, pole_vector_offset_grp):
-        """
-        building up a system of transforms which helps the flipping issue of the ik systems
-
-        Args:
-
-        Returns:
-        
-        """
-        no_flip_offset_aiming_grp = cmds.group(empty=True, name="{}_{}_noFlipIK_aiming_offset_GRP".format(self.side, self.name))
-        no_flip_aiming_grp = cmds.group(empty=True, name="{}_{}_noFlipIK_aiming_GRP".format(self.side, self.name))
-        cmds.parent(no_flip_aiming_grp, no_flip_offset_aiming_grp)
-
-        no_flip_offset_pelvis_grp = cmds.group(empty=True, name="{}_{}_noFlipIK_pelvis_offset_GRP".format(self.side, self.name))
-        no_flip_pelvis_grp = cmds.group(empty=True, name="{}_{}_noFlipIK_pelvis_GRP".format(self.side, self.name))
-        cmds.parent(no_flip_pelvis_grp, no_flip_offset_pelvis_grp)
-
-        cmds.parentConstraint(self.root_jnt, no_flip_offset_pelvis_grp, maintainOffset=False)
-
-        cmds.pointConstraint(self.ik_chain[0], no_flip_offset_aiming_grp, maintainOffset=False)
-        cmds.aimConstraint(self.hand_ik_ctrl.get_control(), no_flip_offset_aiming_grp, aimVector=[0, -1, 0], upVector=[1, 0, 0], worldUpType="objectrotation", worldUpVector=[1, 0, 0], worldUpObject=no_flip_pelvis_grp, maintainOffset=False)
-        cmds.aimConstraint(self.hand_ik_ctrl.get_control(), no_flip_aiming_grp, aimVector=[0, -1, 0], upVector=[1, 0, 0], worldUpType="objectrotation", worldUpVector=[1, 0, 0], worldUpObject=self.hand_ik_ctrl.get_control(), maintainOffset=False)
-
-        follow_pac = cmds.parentConstraint([no_flip_aiming_grp, self.world_space_loc[0]], pole_vector_offset_grp, maintainOffset=True)
-
-        name_attr = "spaces"
-        cmds.addAttr(self.poleVector_ctrl.get_control(), longName=name_attr, attributeType='enum', enumName="foot:world:")
-        cmds.setAttr("{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), keyable=True, lock=False)
-
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W0".format(no_flip_aiming_grp), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=0, value=1.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W0".format(no_flip_aiming_grp), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=1, value=0.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=0, value=0.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=1, value=1.0)        
-
-        return [no_flip_offset_aiming_grp, no_flip_offset_pelvis_grp]
 
     def fk_system(self):
         """
@@ -160,20 +125,19 @@ class ArmLimb():
         self.fk_system_grp = cmds.group(empty=True, name="{}_{}_fkSystem_GRP".format(self.side, self.name))
         cmds.parent(self.fk_system_objs, self.fk_system_grp)
         cmds.group(empty=True, name=self.fk_ctrls_main_grp)
+        transforms_utils.align_objs(self.clavicle_jnt, self.fk_ctrls_main_grp)
+        cmds.parentConstraint(self.clavicle_jnt, self.fk_ctrls_main_grp, maintainOffset=True)
+        # scale fix
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.clavicle_jnt, axis), "{}.scale{}".format(self.fk_ctrls_main_grp, axis), force=True)
         cmds.parent(self.fk_controls[0].get_offset_grp(), self.fk_ctrls_main_grp)
         self.module_main_grp(self.fk_system_grp)
 
         return True
 
-    def ik_stretch_update(self):
+    def ik_stretch_update(self, module_scale_attr):
         """
         """
-
-        module_scale_attr = "moduleScale"
-        attributes_utils.add_vector_attr(self.central_transform, module_scale_attr, keyable=True, lock=False)
-        cmds.setAttr("{}.{}X".format(self.central_transform, module_scale_attr), 1)
-        cmds.setAttr("{}.{}Y".format(self.central_transform, module_scale_attr), 1)
-        cmds.setAttr("{}.{}Z".format(self.central_transform, module_scale_attr), 1)
 
         stretch_attr = "stretchyArm"
         attributes_utils.add_separator(self.hand_ik_ctrl.get_control(), name_sep="stretchyAttribute", by_name=False)
@@ -194,9 +158,12 @@ class ArmLimb():
 
         max_dist = shoulder_elbow_dist + elbow_wrist_dist
 
-        dist_between_node = cmds.createNode("distanceBetween", name="{}_{}_stretchUpdate_DSB")
-        cmds.connectAttr("{}.worldMatrix[0]".format(start_loc[0]), "{}.inMatrix1".format(dist_between_node), force=True)
-        cmds.connectAttr("{}.worldMatrix[0]".format(end_loc[0]), "{}.inMatrix2".format(dist_between_node), force=True)
+        dist_between_node = cmds.createNode("distanceBetween", name="{}_{}_stretchUpdate_DSB".format(self.side, self.name))
+        # cmds.connectAttr("{}.worldMatrix[0]".format(start_loc[0]), "{}.inMatrix1".format(dist_between_node), force=True)
+        # cmds.connectAttr("{}.worldMatrix[0]".format(end_loc[0]), "{}.inMatrix2".format(dist_between_node), force=True)
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.translate{}".format(start_loc[0], axis), "{}.point1{}".format(dist_between_node, axis), force=True)
+            cmds.connectAttr("{}.translate{}".format(end_loc[0], axis), "{}.point2{}".format(dist_between_node, axis), force=True)
 
         scale_compensate_max_dist_node = cmds.createNode("multiplyDivide", name="{}_{}_normalizeMaxDist_stretchUpdate_MLD".format(self.side, self.name))
         normalize_dist_node = cmds.createNode("multiplyDivide", name="{}_{}_stretchUpdate_MLD".format(self.side, self.name))
@@ -241,9 +208,16 @@ class ArmLimb():
         cmds.connectAttr("{}.outputB".format(stretch_blend_node), "{}.scaleZ".format(self.ik_chain[0]), force=True)
         cmds.connectAttr("{}.outputB".format(stretch_blend_node), "{}.scaleZ".format(self.ik_chain[1]), force=True)
 
-        return [start_loc[0], end_loc[0]]
+        # cmds.error()
 
-    def ik_system(self):
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.{}{}".format(self.central_transform, module_scale_attr, axis), "{}.scale{}".format(self.ik_chain[2], axis), force=True)
+            cmds.connectAttr("{}.{}{}".format(self.central_transform, module_scale_attr, axis), "{}.scale{}".format(self.ik_ctrls_main_grp, axis), force=True)
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.{}{}".format(self.central_transform, module_scale_attr, axis), force=True)
+
+        return [start_loc[0], end_loc[0], module_scale_attr]
+
+    def ik_system(self, shoulder_loc_off_grp):
         """
         building up the ik system
 
@@ -258,13 +232,10 @@ class ArmLimb():
         self.ik_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "ik", True)
         self.ik_system_objs.append(self.ik_chain[0])
 
-        self.shoulder_loc = cmds.spaceLocator(name="{}_{}_shoulderPosition_LOC".format(self.side, self.name))
-        transforms_utils.align_objs(self.main_chain[0],  self.shoulder_loc)
-        cmds.parentConstraint(self.clavicle_jnt, self.shoulder_loc, maintainOffset=True)
-        cmds.parentConstraint(self.shoulder_loc, self.ik_chain[0], maintainOffset=True)
-        self.ik_system_objs.append(self.shoulder_loc[0])
+        cmds.parentConstraint(self.shoulder_loc[0], self.ik_chain[0], maintainOffset=True)
+        self.ik_system_objs.append(shoulder_loc_off_grp)
 
-        self.hand_ik_ctrl = controller.Control("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 5.0, 'cube', self.main_chain[2], '', '', ['s', 'v'], '', True, True, False)
+        self.hand_ik_ctrl = controller.Control("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 5.0, 'cube', self.main_chain[2], '', '', ['v'], '', True, True, False)
         self.hand_ik_ctrl.make_dynamic_pivot("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 2.5, self.hand_ik_ctrl.get_control(), self.hand_ik_ctrl.get_control())
         driver_ctrls_offset_grp.append(self.hand_ik_ctrl.get_offset_grp())
 
@@ -275,6 +246,7 @@ class ArmLimb():
         cmds.parentConstraint(self.hand_ik_ctrl.get_control(), ik_rotate_plane_handle[0], maintainOffset=True)
 
         cmds.orientConstraint(self.hand_ik_ctrl.get_control(), self.ik_chain[2], maintainOffset=True)
+
 
         # building pole vector system
         ik_poleVector = polevectors_utils.pole_vector_complex_plane("{}_{}_ikPVSystem".format(self.side, self.name), self.ik_chain[0], self.ik_chain[1], self.ik_chain[2])
@@ -289,12 +261,6 @@ class ArmLimb():
 
         cmds.parent(ik_poleVector[1], self.poleVector_ctrl.get_control())
 
-        # no flip Ik ---> pole vector system
-        # no_flip_fix_grps = polevectors_utils.no_flip_pole_vector(self.name, self.ik_chain[0], self.hand_ik_ctrl.get_control(), self.root_jnt, self.poleVector_ctrl.get_control(), self.poleVector_ctrl.get_offset_grp(), [self.world_space_loc[0]], ["world"], self.side)
-        # self.ik_system_objs.extend(no_flip_fix_grps)
-        # no_flip_fix_grps = self.no_flip_IK(self.poleVector_ctrl.get_offset_grp())
-        # self.ik_system_objs.extend(no_flip_fix_grps)
-
         # adding the poleVector arrow
         annotation = polevectors_utils.pole_vector_arrow(self.ik_chain[1], self.poleVector_ctrl.get_control(), name="{}_{}_poleVector_ANT".format(self.side, self.name))
         driver_ctrls_offset_grp.append(annotation)
@@ -305,10 +271,13 @@ class ArmLimb():
         self.ik_system_grp = cmds.group(empty=True, name="{}_{}_ikSystem_GRP".format(self.side, self.name))
         cmds.parent(self.ik_system_objs, self.ik_system_grp)
         cmds.group(empty=True, name=self.ik_ctrls_main_grp)
+        transforms_utils.align_objs(self.root_jnt, self.ik_ctrls_main_grp)
+        cmds.parentConstraint(self.base_control, self.ik_ctrls_main_grp, maintainOffset=True)
+        
         cmds.parent(driver_ctrls_offset_grp, self.ik_ctrls_main_grp)
 
         self.module_main_grp(self.ik_system_grp)        
-
+        
         return True
     
     # def clavicle_shoulder_system(self):
@@ -322,44 +291,52 @@ class ArmLimb():
 
         """
 
-        # self.shoulder_ctrl = controller.Control("{}_start_ik".format(self.main_chain[0][:len(self.main_chain[0])-4]), 5.0, 'circleFourArrows', self.main_chain[0], self.main_chain[0], '', ['r', 's', 'v'], '', True, True, False)
-        self.clavicle_ctrl = controller.Control("{}".format(self.clavicle_jnt[:len(self.clavicle_jnt)-4]), 5.0, 'pin', self.clavicle_jnt, self.clavicle_jnt, '', ['t', 's', 'v'], '', True, True, False)
-        cmds.parentConstraint(self.clavicle_ctrl.get_control(), self.clavicle_jnt, maintainOffset=True)
-        
         auto_attribute = "autoClavicle"
         attributes_utils.add_float_attr(self.clavicle_ctrl.get_control(), auto_attribute, 0.0, 10.0, 7.0, keyable=True, lock=False)
         # cmds.parentConstraint(self.clavicle_ctrl.get_control(), self.shoulder_loc, maintainOffset=True)
+
+        start_clav_fol_jnt_off_grp = cmds.group(empty=True, name="{}_{}__startAutoClavicle_jnt_offset_GRP".format(self.side, self.name))
+        transforms_utils.align_objs(self.root_jnt, start_clav_fol_jnt_off_grp)
 
         start_clav_fol_jnt = cmds.createNode("joint", name="{}_{}_startAutoClavicle_JNT".format(self.side, self.name))
         transforms_utils.align_objs(self.clavicle_jnt, start_clav_fol_jnt)
 
         end_clav_fol_jnt = cmds.createNode("joint", name="{}_{}_endAutoClavicle_JNT".format(self.side, self.name))
         transforms_utils.align_objs(self.main_chain[2], end_clav_fol_jnt)
-
         cmds.parent(end_clav_fol_jnt, start_clav_fol_jnt)
+        cmds.parent(start_clav_fol_jnt, start_clav_fol_jnt_off_grp)
+        cmds.parentConstraint(self.root_jnt, start_clav_fol_jnt_off_grp, maintainOffset=True)
+        
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(start_clav_fol_jnt_off_grp, axis), force=True)
 
         # root space locator
         spine_follow_loc = cmds.spaceLocator(name="{}_{}_spineFollow_autoClavicle_LOC".format(self.side, self.name))
+        spine_follow_loc_off_grp = cmds.group(empty=True, name="{}_{}_spineFollow_autoClavicle_offset_GRP".format(self.side, self.name))
+        transforms_utils.align_objs(self.root_jnt, spine_follow_loc_off_grp)
         transforms_utils.align_objs(self.clavicle_jnt, spine_follow_loc[0])
-        cmds.parentConstraint(self.root_jnt, spine_follow_loc[0], maintainOffset=True)
+        cmds.parent(spine_follow_loc[0], spine_follow_loc_off_grp)
+        cmds.parentConstraint(self.root_jnt, spine_follow_loc_off_grp, maintainOffset=True)
 
         # auto clav ik space
         auto_clav_follow_loc = cmds.spaceLocator(name="{}_{}_autoClavFollow_autoClavicle_LOC".format(self.side, self.name))
+        auto_clav_follow_loc_off_grp = cmds.group(empty=True, name="{}_{}_autoClavFollow_autoClavicle_offset_GRP".format(self.side, self.name))
+        transforms_utils.align_objs(self.root_jnt, auto_clav_follow_loc_off_grp)
         transforms_utils.align_objs(self.hand_ik_ctrl.get_control(), auto_clav_follow_loc[0])
-        switch_pac = cmds.pointConstraint([self.root_jnt, self.hand_ik_ctrl.get_control()], auto_clav_follow_loc[0], maintainOffset=True)
-        # switch_pac = cmds.parentConstraint([self.fk_controls[0].get_control(), self.hand_ik_ctrl.get_control()], auto_clav_follow_loc[0], maintainOffset=True)
-        # cmds.setAttr("{}.interpType".format(switch_pac[0]), 2)
+        cmds.parent(auto_clav_follow_loc[0], auto_clav_follow_loc_off_grp)
+        switch_pac = cmds.parentConstraint([self.root_jnt, self.hand_ik_ctrl.get_control()], auto_clav_follow_loc_off_grp, maintainOffset=True)
+        cmds.setAttr("{}.interpType".format(switch_pac[0]), 2)
 
-        # ik handle for clavicle automatation
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(spine_follow_loc_off_grp, axis), force=True)
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(auto_clav_follow_loc_off_grp, axis), force=True)
+
+        # ik handle for clavicle automatation2
         ik_handle_clav_follow = cmds.ikHandle(name="{}_{}_autoClavicle".format(self.side, self.name), solver="ikSCsolver", startJoint=start_clav_fol_jnt, endEffector=end_clav_fol_jnt)
         cmds.parentConstraint(auto_clav_follow_loc[0], ik_handle_clav_follow[0], maintainOffset=True)
-        cmds.pointConstraint(self.root_jnt, start_clav_fol_jnt, maintainOffset=True)
-
-        # cmds.pointConstraint(self.root_jnt, self.clavicle_ctrl.get_offset_grp(), maintainOffset=True)
                 
         offset_pac = cmds.parentConstraint([spine_follow_loc[0], start_clav_fol_jnt], self.clavicle_ctrl.get_offset_grp(), maintainOffset=True)
         cmds.setAttr("{}.interpType".format(offset_pac[0]), 2)
-        # modify_pac = cmds.parentConstraint(start_clav_fol_jnt, self.clavicle_ctrl.get_modify_grp(), maintainOffset=True)
 
         # follow for the clavicle in IK
         cmds.setDrivenKeyframe(offset_pac[0], attribute="{}W0".format(spine_follow_loc[0]), currentDriver="{}.{}".format(self.clavicle_ctrl.get_control(), auto_attribute), driverValue=0.0, value=10.0)
@@ -372,10 +349,11 @@ class ArmLimb():
         cmds.setDrivenKeyframe(switch_pac[0], attribute="{}W1".format(self.hand_ik_ctrl.get_control()), currentDriver="{}.{}".format(self.central_transform, switch_attr), driverValue=0.0, value=1.0)
         cmds.setDrivenKeyframe(switch_pac[0], attribute="{}W1".format(self.hand_ik_ctrl.get_control()), currentDriver="{}.{}".format(self.central_transform, switch_attr), driverValue=1.0, value=0.0)
 
+
         # clean scene
-        self.clav_shoul_grp = cmds.group(empty=True, name="{}_{}_clavicleSystem_GRP".format(self.side, self.name))
-        cmds.parent(self.clavicle_ctrl.get_offset_grp(), self.clav_shoul_grp)
-        cmds.parent([start_clav_fol_jnt, ik_handle_clav_follow[0], spine_follow_loc[0], auto_clav_follow_loc[0]], self.ik_system_grp)
+        # self.clav_shoul_grp = cmds.group(empty=True, name="{}_{}_clavicleSystem_GRP".format(self.side, self.name))
+        # cmds.parent(self.clavicle_ctrl.get_offset_grp(), self.clav_shoul_grp)
+        cmds.parent([start_clav_fol_jnt_off_grp, ik_handle_clav_follow[0], spine_follow_loc_off_grp, auto_clav_follow_loc_off_grp], self.ik_system_grp)
 
         return True
 
@@ -409,6 +387,12 @@ class ArmLimb():
         else:
             attributes_utils.add_float_attr(self.central_transform, name_attr, 0, 1, 0, keyable=True, lock=False)
 
+        module_scale_attr = "moduleScale"
+        attributes_utils.add_vector_attr(self.central_transform, module_scale_attr, keyable=True, lock=False)
+        cmds.setAttr("{}.{}X".format(self.central_transform, module_scale_attr), 1)
+        cmds.setAttr("{}.{}Y".format(self.central_transform, module_scale_attr), 1)
+        cmds.setAttr("{}.{}Z".format(self.central_transform, module_scale_attr), 1)
+
         for i, jnt in enumerate(self.main_chain):
             driver_pac = cmds.parentConstraint([self.fk_chain[i], self.ik_chain[i]], self.driver_chain[i], maintainOffset=True)
             cmds.setAttr("{}.interpType".format(driver_pac[0]), 2)
@@ -426,11 +410,12 @@ class ArmLimb():
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W1".format(self.ik_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=1.0)
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W1".format(self.ik_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=0.0)
 
+            
             cmds.setDrivenKeyframe(self.ik_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0, value=1)
             cmds.setDrivenKeyframe(self.ik_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=0)
             cmds.setDrivenKeyframe(self.fk_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0, value=0)
             cmds.setDrivenKeyframe(self.fk_ctrls_main_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=1)
-
+            
             main_pac = cmds.parentConstraint(self.driver_chain[i], jnt, maintainOffset=True)
 
         # clean scene
@@ -439,7 +424,7 @@ class ArmLimb():
 
         self.module_main_grp(grp_objs)
 
-        return name_attr
+        return [name_attr, module_scale_attr]
 
     def twist_chain_modules(self):
         """
@@ -523,6 +508,15 @@ class ArmLimb():
 
         print("###--- Module BipedArm --- START ---###")
 
+        self.shoulder_loc = cmds.spaceLocator(name="{}_{}_shoulderPosition_LOC".format(self.side, self.name))
+        offset_should_loc = transforms_utils.offset_grps_hierarchy(self.shoulder_loc[0])
+        transforms_utils.align_objs(self.clavicle_jnt,  offset_should_loc[0])
+        transforms_utils.align_objs(self.main_chain[0],  self.shoulder_loc[0])
+        cmds.parentConstraint(self.clavicle_jnt, offset_should_loc[0], maintainOffset=True)
+        # cmds.scaleConstraint(self.clavicle_jnt, offset_should_loc[0], maintainOffset=True)
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.clavicle_jnt, axis), "{}.scale{}".format(offset_should_loc[0], axis), force=True)
+
         # temporary
         self.world_space_loc = cmds.spaceLocator(name="{}_{}_worldSpace_LOC".format(self.side, self.name))
         world_space_loc_offset_grp = transforms_utils.offset_grps_hierarchy(self.world_space_loc[0])
@@ -530,24 +524,39 @@ class ArmLimb():
 
         self.module_main_grp(world_space_loc_offset_grp[0])
 
+        self.clav_shoul_grp = cmds.group(empty=True, name="{}_{}_clavicleDriver_GRP".format(self.side, self.name))
+        transforms_utils.align_objs(self.root_jnt, self.clav_shoul_grp)
+        self.clavicle_ctrl = controller.Control("{}".format(self.clavicle_jnt[:len(self.clavicle_jnt)-4]), 5.0, 'pin', self.clavicle_jnt, self.clavicle_jnt, self.clav_shoul_grp, ['t', 's', 'v'], '', True, True, False)
+        # cmds.parentConstraint(self.root_jnt, self.clav_shoul_grp, maintainOffset=True)
+        # scale fix
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(self.clav_shoul_grp, axis), force=True)
+        cmds.parentConstraint(self.clavicle_ctrl.get_control(), self.clavicle_jnt, maintainOffset=True)
+        cmds.scaleConstraint(self.clavicle_ctrl.get_control(), self.clavicle_jnt, maintainOffset=True)
+        
         self.create_driver_joint_chain()
 
         self.fk_system()
-        self.ik_system()
+        
+        self.ik_system(offset_should_loc[0])
 
         # temporary fix
-        cmds.parentConstraint(self.shoulder_loc, self.fk_controls[0].get_offset_grp(), maintainOffset=True)
+        # cmds.parentConstraint(self.shoulder_loc, self.fk_controls[0].get_offset_grp(), maintainOffset=True)
 
         chains_connection_ops = self.chains_connection()
 
-        self.auto_clavicle_system(chains_connection_ops)
-
+        self.auto_clavicle_system(chains_connection_ops[0])
+        
         # ik stretchy update
-        stretch_update = self.ik_stretch_update()
-        cmds.parent(stretch_update, self.ik_system_grp)
+        stretch_update = self.ik_stretch_update(chains_connection_ops[1])
+        cmds.parent([stretch_update[0], stretch_update[1]], self.ik_system_grp)
 
         if self.twist_chain:
             self.twist_chain_modules()
+
+        # temporary scale fix
+        # for axis in ["X", "Y", "Z"]:
+        #     cmds.connectAttr("{}.scale{}".format(self.clavicle_jnt, axis), "{}.{}{}".format(self.central_transform, stretch_update[2], axis), force=True)
 
         # Temporary switch control
         self.switch_ctrl = controller.Control("{}_{}_switch".format(self.side, self.name), 3.0, 's', self.main_chain[-1], '', '', ['t', 'r', 's', 'v'], '', True, True, False)
@@ -564,79 +573,20 @@ class ArmLimb():
             cmds.group(empty=True, name=self.switch_ctrls_grp)
             cmds.parent(self.switch_ctrl.get_offset_grp(), self.switch_ctrls_grp)
 
+        # TEMPORARY CONNECTION - scale fix
+        # scale_fix_cons = cmds.scaleConstraint(self.root_jnt, self.central_transform, maintainOffset=True)
+        # for axis in ["X", "Y", "Z"]:
+        #     cmds.disconnectAttr("{}.constraintScale{}".format(scale_fix_cons[0], axis), "{}.scale{}".format(self.central_transform, axis))
+        #     cmds.connectAttr("{}.constraintScale{}".format(scale_fix_cons[0], axis), "{}.{}{}".format(self.central_transform, chains_connection_ops[1], axis), force=True)
+
         # Temporary stuff
         if cmds.objExists("rig_GRP"):
             cmds.parent(self.main_grp, "rig_GRP")
         
+        # if cmds.objExists("controls_GRP"):
+        #     cmds.parent([self.ik_ctrls_main_grp, self.fk_ctrls_main_grp, self.clav_shoul_grp, self.switch_ctrls_grp], "controls_GRP")
+
         if cmds.objExists("controls_GRP"):
-            cmds.parent([self.ik_ctrls_main_grp, self.fk_ctrls_main_grp, self.clav_shoul_grp, self.switch_ctrls_grp], "controls_GRP")
+            cmds.parent([self.ik_ctrls_main_grp, self.fk_ctrls_main_grp, self.switch_ctrls_grp, self.clav_shoul_grp], "controls_GRP")
 
-
-    def get_name(self):
-        """
-        function for retrieving the name of the limb
-
-        Args:
-
-        Returns:
         
-        """
-        return self.name
-        
-    def get_side(self):
-        """
-        function for retrieving the side of the limb
-
-        Args:
-
-        Returns:
-        
-        """
-        return self.side
-        
-    def get_main_chain(self):
-        """
-        function for retrieving the main_chain which are used for building the module
-
-        Args:
-
-        Returns:
-        
-        """
-        return self.main_chain
-
-    def set_name(self, name):
-        """
-        function for set the name of the limb
-
-        Args:
-
-        Returns:
-        
-        """
-        self.name = name
-        return self.name
-        
-    def set_side(self, side):
-        """
-        function for set the side of the limb
-
-        Args:
-
-        Returns:
-        
-        """
-        self.side = side
-        return self.side
-
-    def set_main_chain(self, chain):
-        """
-        function for set the main chain which is used to build up the limb module
-
-        Args:
-
-        Returns:
-        
-        """
-        self.main_chain = chain
-        return self.main_chain 
