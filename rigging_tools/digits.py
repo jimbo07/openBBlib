@@ -26,6 +26,7 @@ class Digits():
         self,
         name,
         root_trf,
+        hand_tip,
         meta_index_jnt,
         meta_middle_jnt,
         meta_ring_jnt,
@@ -44,6 +45,7 @@ class Digits():
         """
         self.name = name
         self.root_trf = root_trf
+        self.hand_tip = hand_tip
         self.meta_index_jnt = meta_index_jnt
         self.meta_middle_jnt = meta_middle_jnt
         self.meta_ring_jnt = meta_ring_jnt
@@ -102,14 +104,16 @@ class Digits():
         """
 
         # Temporary switch control
-        self.switch_ctrl = controller.Control("{}_{}_switch".format(self.side, self.name), 3.0, 'semicircle', self.switch_ctrl_pos, self.switch_ctrl_pos, '', ['s', 'v'], '', True, True, False)
+        self.switch_ctrl = controller.Control("{}_{}_switch".format(self.side, self.name), 3.0, 'semicircle', self.switch_ctrl_pos, self.switch_ctrl_pos, '', ['t', 'r', 's', 'v'], '', True, True, False)
 
         attributes_utils.add_separator(self.switch_ctrl.get_control(), "switchAttribute", by_name=False)
         switch_attr = "switch_IK_FK"
         attributes_utils.add_float_attr(self.switch_ctrl.get_control(), switch_attr, 0, 1, 0)
         attributes_utils.add_separator(self.switch_ctrl.get_control(), "curlAttributes", by_name=False)
 
-        cmds.parentConstraint(self.switch_ctrl_parent, self.switch_ctrl.get_offset_grp(), maintainOffset=True)
+        cmds.parentConstraint(self.switch_ctrl_pos, self.switch_ctrl.get_offset_grp(), maintainOffset=True)
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_trf, axis), "{}.scale{}".format(self.switch_ctrl.get_offset_grp(), axis), force=True)
 
         for key in self.input_digits:
             if self.input_digits[key]["chain"] == None or self.input_digits[key]["chain"] == []:
@@ -161,15 +165,21 @@ class Digits():
                 for fk_ctrl in self.fk_controls[key]:
                     cmds.connectAttr("{}.{}".format(self.switch_ctrl.get_control(), curl_attr), "{}.rotateZ".format(fk_ctrl.get_modify_grp()), force=True)
 
+                '''
                 # follow attribute for each single ik finger control
+                attributes_utils.add_separator(self.ik_controls[key]["finger_CTRL"].get_control(), "followAttribute", by_name=False)
                 follow_attr = "follow"
                 attributes_utils.add_float_attr(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr, 0, 10, 0)
-                driver_pc = cmds.parentConstraint([self.root_trf, self.switch_ctrl.get_control()], self.ik_controls[key]["finger_CTRL"].get_offset_grp(), maintainOffset=True)
-                cmds.setAttr("{}.interpType".format(driver_pc[0]), 2)
-                cmds.setDrivenKeyframe(driver_pc[0], attribute="{}W0".format(self.root_trf), currentDriver="{}.{}".format(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr), driverValue=0.0, value=1.0)
-                cmds.setDrivenKeyframe(driver_pc[0], attribute="{}W0".format(self.root_trf), currentDriver="{}.{}".format(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr), driverValue=10.0, value=0.0)
+                driver_pc = cmds.parentConstraint([self.hand_tip, self.switch_ctrl.get_control()], self.ik_controls[key]["finger_CTRL"].get_offset_grp(), maintainOffset=True)
+                # driver_pc = cmds.parentConstraint(self.switch_ctrl.get_control(), self.ik_controls[key]["finger_CTRL"].get_offset_grp(), maintainOffset=True)
+                # cmds.setAttr("{}.interpType".format(driver_pc[0]), 2)
+                # cmds.setDrivenKeyframe(driver_pc[0], attribute="{}W0".format(self.switch_ctrl.get_control()), currentDriver="{}.{}".format(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr), driverValue=0.0, value=0.0)
+                # cmds.setDrivenKeyframe(driver_pc[0], attribute="{}W0".format(self.switch_ctrl.get_control()), currentDriver="{}.{}".format(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr), driverValue=10.0, value=1.0)
+                cmds.setDrivenKeyframe(driver_pc[0], attribute="{}W0".format(self.hand_tip), currentDriver="{}.{}".format(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr), driverValue=0.0, value=1.0)
+                cmds.setDrivenKeyframe(driver_pc[0], attribute="{}W0".format(self.hand_tip), currentDriver="{}.{}".format(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr), driverValue=10.0, value=0.0)
                 cmds.setDrivenKeyframe(driver_pc[0], attribute="{}W1".format(self.switch_ctrl.get_control()), currentDriver="{}.{}".format(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr), driverValue=0.0, value=0.0)
                 cmds.setDrivenKeyframe(driver_pc[0], attribute="{}W1".format(self.switch_ctrl.get_control()), currentDriver="{}.{}".format(self.ik_controls[key]["finger_CTRL"].get_control(), follow_attr), driverValue=10.0, value=1.0)
+                '''
 
                 # Temporary stuff - cleaning up the scene
                 if cmds.objExists("rig_GRP"):
