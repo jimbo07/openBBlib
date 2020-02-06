@@ -1,4 +1,4 @@
-from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils, polevectors_utils
+from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils, polevectors_utils, vectors_utils
 from ...controls import controller
 
 
@@ -8,6 +8,7 @@ reload(joints_utils)
 reload(dag_node)
 reload(transforms_utils)
 reload(polevectors_utils)
+reload(vectors_utils)
 
 import pprint
 
@@ -58,6 +59,7 @@ class Digit():
     def create_driver_chain(self):
         """
         """
+        print self.main_chain
         self.driver_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "driver", True)
 
         self.module_main_grp(self.driver_chain[0])
@@ -68,7 +70,6 @@ class Digit():
         """
         """
         self.fk_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "fk", True)
-        # self.fk_system_objs.append(self.fk_chain[0])
 
         for i, jnt in enumerate(self.fk_chain):
             
@@ -82,10 +83,24 @@ class Digit():
             self.fk_controls.append(ctrl)
             
             cmds.parentConstraint(ctrl.get_control(), jnt, maintainOffset=True)
+            # scale fix
+            cmds.scaleConstraint(ctrl.get_control(), jnt, maintainOffset=True)
 
-        cmds.parentConstraint(self.meta_joint, self.fk_controls[0].get_offset_grp(), maintainOffset=True)
         
-        # cmds.parent(self.fk_controls[0].get_offset_grp(), self.fk_controls_master_grp)
+
+        if cmds.objExists(self.fk_controls_grp):
+            cmds.parentConstraint(self.meta_joint, self.fk_controls_grp, maintainOffset=False)
+            # scale fix
+            for axis in ["X", "Y", "Z"]:
+                cmds.connectAttr("{}.scale{}".format(self.meta_joint, axis), "{}.scale{}".format(self.fk_controls_grp, axis), force=True)
+            cmds.parent(self.fk_controls[0].get_offset_grp(), self.fk_controls_grp)
+        else:
+            cmds.group(empty=True, name=self.fk_controls_grp)
+            cmds.parentConstraint(self.meta_joint, self.fk_controls_grp, maintainOffset=False)
+            # scale fix
+            for axis in ["X", "Y", "Z"]:
+                cmds.connectAttr("{}.scale{}".format(self.meta_joint, axis), "{}.scale{}".format(self.fk_controls_grp, axis), force=True)
+            cmds.parent(self.fk_controls[0].get_offset_grp(), self.fk_controls_grp)
 
         # clean up the scene
         if cmds.objExists(self.fk_system_grp):
@@ -171,7 +186,8 @@ class Digit():
         cmds.aimConstraint(self.ik_controls["bendy_CTRL"].get_control(), self.ik_bendy_chain[len(self.ik_bendy_chain)-2], worldUpType="objectrotation", worldUpVector=[0, 1, 0], maintainOffset=True, worldUpObject=self.ik_controls["bendy_CTRL"].get_control())
 
         # TEMPORARY PARENT CONSTRAINT
-        cmds.parentConstraint(self.meta_joint, self.ik_controls["base_CTRL"].get_offset_grp(), maintainOffset=True)
+        cmds.parentConstraint(self.switch_ctrl.get_control(), self.ik_controls["finger_CTRL"].get_offset_grp(), maintainOffset=True)
+        
 
         # clean up the scene
         if cmds.objExists(self.ik_system_grp):
@@ -183,7 +199,26 @@ class Digit():
 
         self.module_main_grp(self.ik_system_grp)
 
-        # cmds.parent([self.ik_controls["base_CTRL"].get_offset_grp(), self.ik_controls["finger_CTRL"].get_offset_grp(), self.ik_controls["bendy_CTRL"].get_offset_grp()], self.ik_controls_master_grp)
+        # clean the scene up
+        if cmds.objExists(self.ik_controls_grp):
+            transforms_utils.align_objs(self.meta_joint, self.ik_controls_grp)
+            cmds.parentConstraint(self.meta_joint, self.ik_controls_grp, maintainOffset=True)
+
+            for axis in ["X", "Y", "Z"]:
+                cmds.connectAttr("{}.scale{}".format(self.meta_joint, axis), "{}.scale{}".format(self.ik_controls_grp, axis), force=True)
+            cmds.parent(self.ik_controls["base_CTRL"].get_offset_grp(), self.ik_controls_grp)
+            cmds.parent(self.ik_controls["finger_CTRL"].get_offset_grp(), self.ik_controls_grp)
+            cmds.parent(self.ik_controls["bendy_CTRL"].get_offset_grp(), self.ik_controls_grp)
+        else:
+            cmds.group(empty=True, name=self.ik_controls_grp)
+            transforms_utils.align_objs(self.meta_joint, self.ik_controls_grp)
+            cmds.parentConstraint(self.meta_joint, self.ik_controls_grp, maintainOffset=True)
+
+            for axis in ["X", "Y", "Z"]:
+                cmds.connectAttr("{}.scale{}".format(self.meta_joint, axis), "{}.scale{}".format(self.ik_controls_grp, axis), force=True) 
+            cmds.parent(self.ik_controls["base_CTRL"].get_offset_grp(), self.ik_controls_grp)
+            cmds.parent(self.ik_controls["finger_CTRL"].get_offset_grp(), self.ik_controls_grp)
+            cmds.parent(self.ik_controls["bendy_CTRL"].get_offset_grp(), self.ik_controls_grp)
 
         '''
         if cmds.objExists(self.ik_controls_master_grp):
@@ -193,6 +228,88 @@ class Digit():
             cmds.parent([self.ik_controls[key]["base_CTRL"].get_offset_grp(), self.ik_controls[key]["finger_CTRL"].get_offset_grp(), self.ik_controls[key]["bendy_CTRL"].get_offset_grp()], self.ik_controls_master_grp)
         '''
         return True
+
+    def ik_stretch_update(self):
+        """
+        """
+
+        module_scale_attr = "moduleScale"
+        attributes_utils.add_vector_attr(self.central_transform, module_scale_attr, keyable=True, lock=False)
+        cmds.setAttr("{}.{}X".format(self.central_transform, module_scale_attr), 1)
+        cmds.setAttr("{}.{}Y".format(self.central_transform, module_scale_attr), 1)
+        cmds.setAttr("{}.{}Z".format(self.central_transform, module_scale_attr), 1)
+
+        stretch_attr = "stretchyFinger"
+        attributes_utils.add_separator(self.ik_controls["finger_CTRL"].get_control(), name_sep="stretchyAttribute", by_name=False)
+        attributes_utils.add_float_attr(self.ik_controls["finger_CTRL"].get_control(), stretch_attr, 0, 1, 0, keyable=True, lock=False)
+
+        start_loc = cmds.spaceLocator(name="{}_{}_startStretch_LOC".format(self.side, self.name))
+        end_loc = cmds.spaceLocator(name="{}_{}_endStretch_LOC".format(self.side, self.name))
+
+        cmds.parentConstraint(self.ik_controls["base_CTRL"].get_control(), start_loc, maintainOffset=False)
+        cmds.parentConstraint(self.ik_controls["finger_CTRL"].get_control(), end_loc, maintainOffset=False)
+
+        first_phalanges = OM.MVector(cmds.xform(self.main_chain[0], q=True, ws=True, t=True))
+        second_phalanges = OM.MVector(cmds.xform(self.main_chain[1], q=True, ws=True, t=True))
+        third_phalanges = OM.MVector(cmds.xform(self.main_chain[2], q=True, ws=True, t=True))
+        fourth_phalanges = OM.MVector(cmds.xform(self.main_chain[3], q=True, ws=True, t=True))
+
+        first_second_dist = vectors_utils.distance_between(first_phalanges, second_phalanges)
+        second_third_dist = vectors_utils.distance_between(second_phalanges, third_phalanges)
+        third_fourth_dist = vectors_utils.distance_between(third_phalanges, fourth_phalanges)
+
+        max_dist = first_second_dist + second_third_dist + third_fourth_dist
+
+        dist_between_node = cmds.createNode("distanceBetween", name="{}_{}_stretchUpdate_DSB".format(self.side, self.name))
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.translate{}".format(start_loc[0], axis), "{}.point1{}".format(dist_between_node, axis), force=True)
+            cmds.connectAttr("{}.translate{}".format(end_loc[0], axis), "{}.point2{}".format(dist_between_node, axis), force=True)
+
+        scale_compensate_max_dist_node = cmds.createNode("multiplyDivide", name="{}_{}_normalizeMaxDist_stretchUpdate_MLD".format(self.side, self.name))
+        normalize_dist_node = cmds.createNode("multiplyDivide", name="{}_{}_stretchUpdate_MLD".format(self.side, self.name))
+        cmds.setAttr("{}.operation".format(normalize_dist_node), 2)
+        scale_compensate_dist_node = cmds.createNode("multiplyDivide", name="{}_{}_normalizeDist_stretchUpdate_MLD".format(self.side, self.name))
+        stretch_condition_node = cmds.createNode("condition", name="{}_{}_stretchUpdate_CND".format(self.side, self.name))
+        cmds.setAttr("{}.operation".format(stretch_condition_node), 2)
+        stretch_blend_node = cmds.createNode("blendColors", name="{}_{}_stretchUpdate_BLC".format(self.side, self.name))
+
+        # scale compensate multiply divide connection attributes
+        cmds.setAttr("{}.input1X".format(scale_compensate_max_dist_node), max_dist)
+        cmds.connectAttr("{}.{}X".format(self.central_transform, module_scale_attr), "{}.input2X".format(scale_compensate_max_dist_node), force=True)
+
+        # stretch update connection attribute
+        cmds.connectAttr("{}.distance".format(dist_between_node), "{}.input1X".format(normalize_dist_node), force=True)
+        cmds.connectAttr("{}.outputX".format(scale_compensate_max_dist_node), "{}.input2X".format(normalize_dist_node), force=True)
+
+        # scale compensate distance node conenction attribute
+        cmds.connectAttr("{}.{}X".format(self.central_transform, module_scale_attr), "{}.input2X".format(scale_compensate_dist_node), force=True)
+        cmds.connectAttr("{}.outputX".format(normalize_dist_node), "{}.input1X".format(scale_compensate_dist_node), force=True)
+
+        # condition node connection attribute
+        cmds.connectAttr("{}.outputX".format(normalize_dist_node), "{}.firstTerm".format(stretch_condition_node), force=True)
+        cmds.setAttr("{}.secondTerm".format(stretch_condition_node), 1.0)
+        cmds.connectAttr("{}.{}X".format(self.central_transform, module_scale_attr), "{}.colorIfFalseR".format(stretch_condition_node), force=True)
+        cmds.connectAttr("{}.outputX".format(scale_compensate_dist_node), "{}.colorIfTrueR".format(stretch_condition_node), force=True)
+
+        # connection scale to blend node
+        cmds.connectAttr("{}.{}".format(self.ik_controls["finger_CTRL"].get_control(), stretch_attr), "{}.blender".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.outColorR".format(stretch_condition_node), "{}.color1R".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}Y".format(self.central_transform, module_scale_attr), "{}.color1G".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}Z".format(self.central_transform, module_scale_attr), "{}.color1B".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}X".format(self.central_transform, module_scale_attr), "{}.color2R".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}Y".format(self.central_transform, module_scale_attr), "{}.color2G".format(stretch_blend_node), force=True)
+        cmds.connectAttr("{}.{}Z".format(self.central_transform, module_scale_attr), "{}.color2B".format(stretch_blend_node), force=True)
+
+        # connection between blend node and the IK chain
+        for i in range(0, len(self.main_chain)):
+            cmds.connectAttr("{}.outputR".format(stretch_blend_node), "{}.scaleX".format(self.ik_bendy_chain[i]), force=True)
+            cmds.connectAttr("{}.outputR".format(stretch_blend_node), "{}.scaleX".format(self.ik_primary_chain[i]), force=True)
+            cmds.connectAttr("{}.outputG".format(stretch_blend_node), "{}.scaleY".format(self.ik_bendy_chain[i]), force=True)
+            cmds.connectAttr("{}.outputG".format(stretch_blend_node), "{}.scaleY".format(self.ik_primary_chain[i]), force=True)
+            cmds.connectAttr("{}.outputB".format(stretch_blend_node), "{}.scaleZ".format(self.ik_bendy_chain[i]), force=True)
+            cmds.connectAttr("{}.outputB".format(stretch_blend_node), "{}.scaleZ".format(self.ik_primary_chain[i]), force=True)
+
+        return [start_loc[0], end_loc[0], module_scale_attr]
 
     def chains_connection(self):
         """
@@ -234,15 +351,23 @@ class Digit():
                 print "{}.{}".format(self.name, name_attr)
                 print
 
+            driver_scale_blnd_node = cmds.createNode("blendColors", name="{}_{}_scaleDriverJNT_{}_BLC".format(self.side, self.name, i))
+            cmds.connectAttr("{}.{}".format(self.central_transform, name_attr), "{}.blender".format(driver_scale_blnd_node), force=True)
+            for channel in [["X", "R"], ["Y", "G"], ["Z", "B"]]:
+                cmds.connectAttr("{}.scale{}".format(self.ik_bendy_chain[i], channel[0]), "{}.color2{}".format(driver_scale_blnd_node, channel[1]), force=True)
+                cmds.connectAttr("{}.scale{}".format(self.fk_chain[i], channel[0]), "{}.color1{}".format(driver_scale_blnd_node, channel[1]), force=True)
+                cmds.connectAttr("{}.output{}".format(driver_scale_blnd_node, channel[1]), "{}.scale{}".format(self.driver_chain[i], channel[0]), force=True)
+                cmds.connectAttr("{}.scale{}".format(self.driver_chain[i], channel[0]), "{}.scale{}".format(jnt, channel[0]), force=True)
+
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W0".format(self.fk_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=0.0)
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W0".format(self.fk_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=1.0)
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W1".format(self.ik_bendy_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0.0, value=1.0)
             cmds.setDrivenKeyframe(driver_pac, attribute="{}W1".format(self.ik_bendy_chain[i]), currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=0.0)
 
-            # cmds.setDrivenKeyframe(self.ik_controls_master_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0, value=1)
-            # cmds.setDrivenKeyframe(self.ik_controls_master_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=0)
-            # cmds.setDrivenKeyframe(self.fk_controls_master_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0, value=0)
-            # cmds.setDrivenKeyframe(self.fk_controls_master_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=1)
+            cmds.setDrivenKeyframe(self.ik_controls_master_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0, value=1)
+            cmds.setDrivenKeyframe(self.ik_controls_master_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=0)
+            cmds.setDrivenKeyframe(self.fk_controls_master_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=0, value=0)
+            cmds.setDrivenKeyframe(self.fk_controls_master_grp, attribute="visibility", currentDriver="{}.{}".format(self.central_transform, name_attr), driverValue=1, value=1)
 
             main_pac = cmds.parentConstraint(self.driver_chain[i], jnt, maintainOffset=True)
 
@@ -278,28 +403,12 @@ class Digit():
 
         self.chains_connection()
 
-        """
-        self.fk_controls = []
-        self.ik_controls = {}
-        "base_CTRL":None,
-        "finger_CTRL":None,
-        "bendy_CTRL":None
-        """
-        # clean the scene up
-        if cmds.objExists(self.ik_controls_grp):
-            cmds.parent(self.ik_controls["base_CTRL"].get_offset_grp(), self.ik_controls_grp)
-            cmds.parent(self.ik_controls["finger_CTRL"].get_offset_grp(), self.ik_controls_grp)
-            cmds.parent(self.ik_controls["bendy_CTRL"].get_offset_grp(), self.ik_controls_grp)
-        else:
-            cmds.group(empty=True, name=self.ik_controls_grp)
-            cmds.parent(self.ik_controls["base_CTRL"].get_offset_grp(), self.ik_controls_grp)
-            cmds.parent(self.ik_controls["finger_CTRL"].get_offset_grp(), self.ik_controls_grp)
-            cmds.parent(self.ik_controls["bendy_CTRL"].get_offset_grp(), self.ik_controls_grp)
-        
-        if cmds.objExists(self.fk_controls_grp):
-            cmds.parent(self.fk_controls[0].get_offset_grp(), self.fk_controls_grp)
-        else:
-            cmds.group(empty=True, name=self.fk_controls_grp)
-            cmds.parent(self.fk_controls[0].get_offset_grp(), self.fk_controls_grp)
+        # ik stretchy update
+        stretch_update = self.ik_stretch_update()
+        cmds.parent([stretch_update[0], stretch_update[1]], self.ik_system_grp)
+
+        # TEMPORARY CONNECTION
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_trf, axis), "{}.{}{}".format(self.central_transform, stretch_update[2], axis), force=True)
 
         return [self.fk_controls, self.ik_controls, self.central_transform, self.ik_controls_grp, self.fk_controls_grp, self.main_grp]
