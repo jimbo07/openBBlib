@@ -1,3 +1,5 @@
+import pprint
+
 from ...utils import attributes_utils, joints_utils, dag_node, transforms_utils, polevectors_utils, vectors_utils
 from ...controls import controller
 from ...sub_modules import stretchy_joint, twist_chain
@@ -36,7 +38,8 @@ class LegLimb():
                     inner_loc = "", 
                     outer_loc = "",
                     twist_chain = False, 
-                    central_transform = None
+                    central_transform = None,
+                    base_control = "baseOffset_CTRL"
                 ):
         """
         Class Constructor
@@ -58,6 +61,7 @@ class LegLimb():
         self.outer_loc = outer_loc
         self.twist_chain = twist_chain 
         self.central_transform = central_transform
+        self.base_control = base_control
 
         self.world_space_loc = None
 
@@ -131,43 +135,7 @@ class LegLimb():
         cmds.setAttr("{}.visibility".format(grp_name[0]), 0)
         
         return [loc_name, grp_name[0]]
-    '''
-    def no_flip_IK(self, pole_vector_offset_grp):
-        """
-        building up a system of transforms which helps the flipping issue of the ik systems
 
-        Args:
-
-        Returns:
-        
-        """
-        no_flip_offset_aiming_grp = cmds.group(empty=True, name="{}_{}_noFlipIK_aiming_offset_GRP".format(self.side, self.name))
-        no_flip_aiming_grp = cmds.group(empty=True, name="{}_{}_noFlipIK_aiming_GRP".format(self.side, self.name))
-        cmds.parent(no_flip_aiming_grp, no_flip_offset_aiming_grp)
-
-        no_flip_offset_pelvis_grp = cmds.group(empty=True, name="{}_{}_noFlipIK_pelvis_offset_GRP".format(self.side, self.name))
-        no_flip_pelvis_grp = cmds.group(empty=True, name="{}_{}_noFlipIK_pelvis_GRP".format(self.side, self.name))
-        cmds.parent(no_flip_pelvis_grp, no_flip_offset_pelvis_grp)
-
-        cmds.parentConstraint(self.root_jnt, no_flip_offset_pelvis_grp, maintainOffset=False)
-
-        cmds.pointConstraint(self.ik_chain[0], no_flip_offset_aiming_grp, maintainOffset=False)
-        cmds.aimConstraint(self.ankle_loc, no_flip_offset_aiming_grp, aimVector=[0, -1, 0], upVector=[1, 0, 0], worldUpType="objectrotation", worldUpVector=[1, 0, 0], worldUpObject=no_flip_pelvis_grp, maintainOffset=False)
-        cmds.aimConstraint(self.ankle_loc, no_flip_aiming_grp, aimVector=[0, -1, 0], upVector=[1, 0, 0], worldUpType="objectrotation", worldUpVector=[1, 0, 0], worldUpObject=self.ankle_loc, maintainOffset=False)
-
-        follow_pac = cmds.parentConstraint([no_flip_aiming_grp, self.world_space_loc[0]], pole_vector_offset_grp, maintainOffset=True)
-
-        name_attr = "spaces"
-        cmds.addAttr(self.poleVector_ctrl.get_control(), longName=name_attr, attributeType='enum', enumName="foot:world:")
-        cmds.setAttr("{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), keyable=True, lock=False)
-
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W0".format(no_flip_aiming_grp), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=0, value=1.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W0".format(no_flip_aiming_grp), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=1, value=0.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=0, value=0.0)
-        cmds.setDrivenKeyframe(follow_pac, attribute="{}W1".format(self.world_space_loc[0]), currentDriver="{}.{}".format(self.poleVector_ctrl.get_control(), name_attr), driverValue=1, value=1.0)        
-
-        return [no_flip_offset_aiming_grp, no_flip_offset_pelvis_grp]
-    '''
     def fk_system(self):
         """
         building up the fk system
@@ -180,8 +148,6 @@ class LegLimb():
 
         driver_ctrls = []
         driver_ctrls_offset_grp = []
-
-        # grp_objs = []
 
         self.fk_chain = joints_utils.related_clean_joint_chain(self.main_chain, self.side, "fk", True)
         self.fk_system_objs.append(self.fk_chain[0])
@@ -201,17 +167,15 @@ class LegLimb():
             cmds.parentConstraint(ctrl.get_control(), jnt, maintainOffset=True)
             cmds.scaleConstraint(ctrl.get_control(), jnt, maintainOffset=True)
 
-        # clean scene
-        # grp_objs.append(driver_ctrls_offset_grp[0])
-        # grp_objs.append(self.fk_chain[0])
-
         self.fk_system_grp = cmds.group(self.fk_system_objs, name="{}_{}_fkSystem_GRP".format(self.side, self.name))
-        cmds.group(driver_ctrls_offset_grp[0], name=self.fk_ctrls_main_grp)
-        
+        cmds.group(empty=True, name=self.fk_ctrls_main_grp)
+        transforms_utils.align_objs(self.root_jnt, self.fk_ctrls_main_grp)
+        cmds.parent(driver_ctrls_offset_grp[0], self.fk_ctrls_main_grp)
+        cmds.parentConstraint(self.root_jnt, self.fk_ctrls_main_grp, maintainOffset=True)
+        # scale fix
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(self.fk_ctrls_main_grp, axis), force=True)
         self.module_main_grp(self.fk_system_grp)
-
-        # TEMPORARY --- constraint start ctrl to his root
-        cmds.parentConstraint(self.root_jnt, driver_ctrls_offset_grp[0], maintainOffset=True)
 
         return [driver_ctrls, driver_ctrls_offset_grp, self.fk_system_grp]
 
@@ -225,6 +189,8 @@ class LegLimb():
 
         """
         rolls_grps = []
+
+        old_parent = cmds.listRelatives(self.ankle_loc, parent=True)
 
         transforms_utils.align_objs(self.main_chain[2], self.ankle_loc)
 
@@ -241,15 +207,25 @@ class LegLimb():
         outer_roll_offset_grps = transforms_utils.offset_grps_hierarchy(self.outer_loc)
         rolls_grps.append(outer_roll_offset_grps)
 
-        rolls_grp = cmds.group(empty=True, name="{}_{}_rolls_GRP".format(self.side, self.name))
         cmds.parent(ankle_roll_offset_grps[0], self.ball_loc)
         cmds.parent(ball_roll_offset_grps[0], self.outer_loc)
         cmds.parent(outer_roll_offset_grps[0], self.inner_loc)
         cmds.parent(inner_roll_offset_grps[0], self.tip_loc)
         cmds.parent(tip_roll_offset_grps[0], self.heel_loc)
-        cmds.parent(heel_roll_offset_grps[0], rolls_grp)
 
-        return [rolls_grps, rolls_grp]
+        main_rolls_grp = cmds.group(empty=True, name="{}_{}_rollsSystem_GRP".format(self.side, self.name))
+        transforms_utils.align_objs(self.root_jnt, main_rolls_grp)
+        cmds.parentConstraint(self.root_jnt, main_rolls_grp, maintainOffset=True)
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(main_rolls_grp, axis), force=True)
+        
+        cmds.parent(heel_roll_offset_grps[0], main_rolls_grp)
+        
+        rolls_grps.append(main_rolls_grp)
+
+        cmds.delete(old_parent)
+
+        return [rolls_grps]
 
     def foot_roll_system(self, rools_data):
         """
@@ -304,7 +280,7 @@ class LegLimb():
         """
         # initial setup for roll locators hierarchy
         rolls_locs_data_tmp = self.roll_locs_hierarchy()
-        self.ik_system_objs.append(rolls_locs_data_tmp[0][3][0])
+        self.ik_system_objs.append(rolls_locs_data_tmp[0][-1])
 
         driver_ctrls_offset_grp = []        
 
@@ -314,11 +290,17 @@ class LegLimb():
 
         # creating ctrl for shoulder/hip and his grps   ####  circleFourArrows  ####
         self.hip_loc = cmds.spaceLocator(name="{}_{}_hipPosition_LOC".format(self.side, self.name))
+        hip_loc_off_grp = cmds.group(empty=True, name="{}_{}_hipPosition_offset_GRP".format(self.side, self.name))
         transforms_utils.align_objs(self.main_chain[0],  self.hip_loc)
-        self.ik_system_objs.append(self.hip_loc[0])
+        transforms_utils.align_objs(self.root_jnt,  hip_loc_off_grp)
+        cmds.parent(self.hip_loc[0], hip_loc_off_grp)
 
-        # self.start_ctrl = controller.Control("{}_start_ik".format(self.main_chain[0][:len(self.main_chain[0])-4]), 5.0, 'circleFourArrows', self.main_chain[0], self.main_chain[0], '', ['r', 's', 'v'], '', True, True, False)
-        # driver_ctrls_offset_grp.append(self.start_ctrl.get_offset_grp())
+        cmds.parentConstraint(self.root_jnt, hip_loc_off_grp, maintainOffset=True)
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(hip_loc_off_grp, axis), force=True)
+
+        self.ik_system_objs.append(hip_loc_off_grp)
+
 
         self.main_ctrl = controller.Control("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 5.0, 'cube', self.main_chain[2], '', '', ['s', 'v'], '', True, True, False)
         self.main_ctrl.make_dynamic_pivot("{}_main_ik".format(self.main_chain[2][:len(self.main_chain[2])-4]), 2.5, self.main_ctrl.get_control(), self.main_ctrl.get_control())
@@ -328,11 +310,12 @@ class LegLimb():
 
         # the --- rolls_locs_data_tmp[0][2] --- is the heel offset group
         cmds.parentConstraint(self.main_ctrl.get_control(), rolls_locs_data_tmp[0][3][0], maintainOffset=True)
-        # cmds.scaleConstraint(self.main_ctrl.get_control(), self.ik_chain[2], maintainOffset=True)
 
         # set-up a foot roll system
-        self.foot_roll_system(rolls_locs_data_tmp)
+        self.foot_roll_system(rolls_locs_data_tmp[0][3][0])
         cmds.parentConstraint(self.ik_chain[2], self.foot_chain[0], maintainOffset=True)
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.ik_chain[2], axis), "{}.scale{}".format(self.foot_chain[0], axis), force=True)
 
         ik_rotate_plane_handle = cmds.ikHandle(name="{}_{}_rotatePlane_IKH".format(self.side, self.name), solver="ikRPsolver", startJoint=self.ik_chain[0], endEffector=self.ik_chain[2])
 
@@ -341,7 +324,6 @@ class LegLimb():
         cmds.parentConstraint(self.hip_loc[0], self.ik_chain[0], maintainOffset=True)
 
         cmds.parentConstraint(self.ankle_loc, ik_rotate_plane_handle[0], maintainOffset=True)
-        # cmds.parentConstraint(self.ankle_loc, ik_spring_handle[0], maintainOffset=True)
 
         cmds.orientConstraint(self.ankle_loc, self.ik_chain[2], maintainOffset=True)
 
@@ -360,9 +342,16 @@ class LegLimb():
 
         # no flip Ik ---> pole vector system
         no_flip_fix_grps = polevectors_utils.no_flip_pole_vector(self.name, self.ik_chain[0], self.main_ctrl.get_control(), self.root_jnt, self.poleVector_ctrl.get_control(), self.poleVector_ctrl.get_offset_grp(), [self.world_space_loc[0]], ["world"], self.side)
-        self.ik_system_objs.extend(no_flip_fix_grps)
-        # no_flip_fix_grps = self.no_flip_IK(self.poleVector_ctrl.get_offset_grp())
-        # self.ik_system_objs.extend(no_flip_fix_grps)
+        scale_fix_no_flip_off_grp = cmds.group(empty=True, name="{}_{}_scaleFix_noFlipIK_aiming_offset_GRP".format(self.side, self.name))
+        transforms_utils.align_objs(self.root_jnt, scale_fix_no_flip_off_grp)
+        cmds.parentConstraint(self.root_jnt, scale_fix_no_flip_off_grp, maintainOffset=True)
+        cmds.parent(no_flip_fix_grps[0], scale_fix_no_flip_off_grp)
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(scale_fix_no_flip_off_grp, axis), force=True)
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.scale{}".format(no_flip_fix_grps[1], axis), force=True)
+
+        self.ik_system_objs.extend([scale_fix_no_flip_off_grp, no_flip_fix_grps[1]])
+        
 
         # adding the poleVector arrow
         annotation = polevectors_utils.pole_vector_arrow(self.ik_chain[1], self.poleVector_ctrl.get_control(), name="{}_{}_poleVector_ANT".format(self.side, self.name))
@@ -379,26 +368,18 @@ class LegLimb():
         self.ik_system_grp = cmds.group(empty=True, name="{}_{}_ikSystem_GRP".format(self.side, self.name))
         cmds.parent(self.ik_system_objs, self.ik_system_grp)
         cmds.group(empty=True, name=self.ik_ctrls_main_grp)
+        transforms_utils.align_objs(self.root_jnt, self.ik_ctrls_main_grp)
         cmds.parent(driver_ctrls_offset_grp, self.ik_ctrls_main_grp)
+        
+        cmds.parentConstraint(self.base_control, self.ik_ctrls_main_grp, maintainOffset=True)
 
         self.module_main_grp(self.ik_system_grp)        
-
-        # TEMPORARY --- constraint start loc to his root
-        name_attr = "spaces"
-        transforms_utils.make_spaces(self.hip_loc[0], self.hip_loc[0], name_attr, [self.world_space_loc[0], self.root_jnt], naming=["world", "root"])
-        cmds.setAttr("{}.{}".format(self.hip_loc[0], name_attr), 1)
         
         return True
 
-    def ik_stretch_update(self):
+    def ik_stretch_update(self, module_scale_attr):
         """
         """
-
-        module_scale_attr = "moduleScale"
-        attributes_utils.add_vector_attr(self.central_transform, module_scale_attr, keyable=True, lock=False)
-        cmds.setAttr("{}.{}X".format(self.central_transform, module_scale_attr), 1)
-        cmds.setAttr("{}.{}Y".format(self.central_transform, module_scale_attr), 1)
-        cmds.setAttr("{}.{}Z".format(self.central_transform, module_scale_attr), 1)
 
         stretch_attr = "stretchyLeg"
         attributes_utils.add_separator(self.main_ctrl.get_control(), name_sep="stretchyAttribute", by_name=False)
@@ -466,6 +447,10 @@ class LegLimb():
         cmds.connectAttr("{}.outputB".format(stretch_blend_node), "{}.scaleZ".format(self.ik_chain[0]), force=True)
         cmds.connectAttr("{}.outputB".format(stretch_blend_node), "{}.scaleZ".format(self.ik_chain[1]), force=True)
 
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.{}{}".format(self.central_transform, module_scale_attr, axis), "{}.scale{}".format(self.ik_chain[2], axis), force=True)
+            cmds.connectAttr("{}.{}{}".format(self.central_transform, module_scale_attr, axis), "{}.scale{}".format(self.ik_ctrls_main_grp, axis), force=True)
+
         return [start_loc[0], end_loc[0]]
 
     def chains_connection(self):
@@ -498,6 +483,11 @@ class LegLimb():
         else:
             attributes_utils.add_float_attr(self.central_transform, name_attr, 0, 1, 0, keyable=True, lock=False)
 
+        module_scale_attr = "moduleScale"
+        attributes_utils.add_vector_attr(self.central_transform, module_scale_attr, keyable=True, lock=False)
+        cmds.setAttr("{}.{}X".format(self.central_transform, module_scale_attr), 1)
+        cmds.setAttr("{}.{}Y".format(self.central_transform, module_scale_attr), 1)
+        cmds.setAttr("{}.{}Z".format(self.central_transform, module_scale_attr), 1)
 
         for i, jnt in enumerate(self.main_chain):
             driver_pac = cmds.parentConstraint([self.fk_chain[i], self.ik_chain[i]], self.driver_chain[i], maintainOffset=True)
@@ -534,7 +524,7 @@ class LegLimb():
 
         self.module_main_grp(grp_objs)
 
-        return True
+        return [name_attr, module_scale_attr]
 
     def twist_chain_modules(self):
         """
@@ -644,10 +634,10 @@ class LegLimb():
         self.fk_system()
         self.ik_system()
 
-        self.chains_connection()
+        chains_connection_ops = self.chains_connection()
 
         # ik stretchy update
-        stretch_update = self.ik_stretch_update()
+        stretch_update = self.ik_stretch_update(chains_connection_ops[1])
         cmds.parent(stretch_update, self.ik_system_grp)
 
         if self.twist_chain:
@@ -668,101 +658,13 @@ class LegLimb():
             cmds.group(empty=True, name=self.switch_ctrls_grp)
             cmds.parent(self.switch_ctrl.get_offset_grp(), self.switch_ctrls_grp)
 
+        # TEMPORARY CONNECTION - scale fix
+        for axis in ["X", "Y", "Z"]:
+            cmds.connectAttr("{}.scale{}".format(self.root_jnt, axis), "{}.{}{}".format(self.central_transform, chains_connection_ops[1], axis), force=True)
+
         # Temporary stuff
         if cmds.objExists("rig_GRP"):
             cmds.parent(self.main_grp, "rig_GRP")
         
         if cmds.objExists("controls_GRP"):
             cmds.parent([self.ik_ctrls_main_grp, self.fk_ctrls_main_grp, self.switch_ctrls_grp], "controls_GRP")
-
-    def get_name(self):
-        """
-        function for retrieving the name of the limb
-
-        Args:
-
-        Returns:
-        
-        """
-        return self.name
-        
-    def get_side(self):
-        """
-        function for retrieving the side of the limb
-
-        Args:
-
-        Returns:
-        
-        """
-        return self.side
-        
-    def get_main_chain(self):
-        """
-        function for retrieving the main_chain which are used for building the module
-
-        Args:
-
-        Returns:
-        
-        """
-        return self.main_chain
-
-    def get_rolls_locs(self):
-        """
-        function for retrieving the locators used for the rolls
-
-        Args:
-
-        Returns:
-        
-        """
-        return self.rolls_locs
-
-    def set_name(self, name):
-        """
-        function for set the name of the limb
-
-        Args:
-
-        Returns:
-        
-        """
-        self.name = name
-        return self.name
-        
-    def set_side(self, side):
-        """
-        function for set the side of the limb
-
-        Args:
-
-        Returns:
-        
-        """
-        self.side = side
-        return self.side
-        
-    def set_rolls_locs(self, locs):
-        """
-        function for set the list of locators used for rolls
-
-        Args:
-
-        Returns:
-        
-        """
-        self.rolls_locs = locs
-        return self.rolls_locs 
-
-    def set_main_chain(self, chain):
-        """
-        function for set the main chain which is used to build up the limb module
-
-        Args:
-
-        Returns:
-        
-        """
-        self.main_chain = chain
-        return self.main_chain 
